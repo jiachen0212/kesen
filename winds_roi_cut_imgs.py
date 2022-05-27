@@ -27,7 +27,6 @@ def label_check(js_path, defect):
     return 0
 
 
-
 def json_label_check(js_path, defects, defcet_nums):
     try:
         data = json.load(open(js_path, 'r'))
@@ -187,10 +186,6 @@ if __name__ == '__main__':
                 line = '{}||{}\n'.format(pre+nohx.split('.')[0]+'.bmp', pre+nohx)
                 print(line)
                 test_txt.write(line)
-
-
-
-
 
 
 
