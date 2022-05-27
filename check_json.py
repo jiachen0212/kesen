@@ -71,13 +71,3 @@ def calcuate_defect_nums():
 if __name__ == '__main__':
     # calcuate_defect_nums()
     defect2ignore()
-
-    
-                
-                
-
-                    
-    
-    
-
-
