@@ -1,3 +1,5 @@
+import warnings
+warnings.filterwarnings("ignore")
 import cv2
 import numpy as np
 import onnxruntime as ort
@@ -5,6 +7,9 @@ from scipy.special import softmax
 from scipy import spatial
 import os
 from PIL import Image
+from PIL import ImageFile
+Image.MAX_IMAGE_PIXELS = None
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 import math
 
 def mkdir(res_dir):
@@ -111,16 +116,16 @@ def roi_cut_imgtest(img_path, roi, split_target, cuted_dir):
     for i in range(split_target[0]):
         for j in range(split_target[1]):
             sub_img = img_roied[sub_h*j: sub_h*(j+1), sub_w*i: sub_w*(i+1)]
-            sub_name = name.split('.')[0]+'_{}_{}.jpg'.format(j,i)
+            sub_name = name.split('.')[0]+'_{}_{}.bmp'.format(j,i)
             cv2.imwrite(os.path.join(cuted_dir, sub_name), sub_img)
 
 
-def merge(sub_imgs_dir, roi, split_target, h_, w_):
+def merge(H_full, W_full, name, sub_imgs_dir, roi, split_target, h_, w_):
     full_img = np.zeros((h_*split_target[1], w_*split_target[0], 3))
-    full_ = np.zeros((22000, 8192, 3))
+    full_ = np.zeros((W_full, H_full, 3))
     for i in range(split_target[0]):
         for j in range(split_target[1]):
-            path = os.path.join(sub_imgs_dir, '1-1-5_{}_{}.jpg'.format(j, i))
+            path = os.path.join(sub_imgs_dir, '{}_{}_{}.bmp'.format(name, j, i))
             img = cv2.imread(path)  # 竖直_水平
             full_img[h_*j:h_*(j+1), w_*i:w_*(i+1)] = img
     full_[roi[1]:roi[3], roi[0]:roi[2],:] = full_img
@@ -140,12 +145,11 @@ if __name__ == "__main__":
     rois = [(1200, 2026, 8192, 21650), (0, 2100, 7256, 21640)] 
     split_target = (2, 4)
 
-    defcets = ['ok', 'fushidian', 'heixian', 'zangwu', 'huichen']
+    defcets = ['bg', 'fushidian', 'heixian', 'zangwu']
     # - bg
     # - fushidian
     # - heixian
     # - zangwu
-    # - huichen
 
     # 1. 和defcet_dict的keys一一对应
     ng_nums = [0] * len(defcets)
@@ -155,56 +159,73 @@ if __name__ == "__main__":
     num_thres = [50] * len(defcets)
 
     # 物料left和物料right, 共测试两张.
-    test_dir = os.path.join(root_path, 'tests')
-    test_paths = [os.path.join(test_dir, a) for a in os.listdir(test_dir)]
+    test_dir = os.path.join(root_path, 'test_dir')
+    test_paths = [os.path.join(test_dir, a) for a in os.listdir(test_dir) if '.bmp' in a]
     # 保存测试图像的结果
     res_dir = os.path.join(root_path, 'res_dir')
     mkdir(res_dir)
 
-    # 输入模型的尺寸
+    # 部署模型的输入尺寸
     size = [2000, 3000]
     # 导入onnx
-    onnx_path = os.path.join(root_path, 'ycy.onnx')
+    onnx_path = os.path.join(root_path, '1000.onnx')
     onnx_session = ort.InferenceSession(onnx_path)
 
     for left_or_right_img in test_paths:
-        # img_left, img_right
+        full_img = Image.open(left_or_right_img)
+        H_full, W_full = full_img.size[:2]
+
+        # img_left or img_right
         im_name = os.path.basename(left_or_right_img)
         name = im_name.split('.')[0]
-        if im_name.split('_')[-1] == 'left':
+        if im_name.split('-')[1] == '1':
             roi = rois[1]
             cuted_dir = os.path.join(test_dir, 'left')
             cuted_infer_dir = os.path.join(test_dir, 'left_res')
             mkdir(cuted_dir)
             mkdir(cuted_infer_dir)
-            # 落盘sub_imgs, j_i是sub_bin的索引.sub_img的检出box的坐标信息需换算至整图坐标,需要此索引信息.
-            roi_cut_imgtest(left_or_right_img, roi, split_target, cuted_dir)
-            # inference单张子图
-            for i in range(split_target[0]):
-                for j in range(split_target[1]):
-                    Name = name.split('.')[0]+'_{}_{}.jpg'.format(j,i)
-                    img_name = os.path.join(cuted_dir, Name)
-                    img = Image.open(img_name).convert('RGB')
-                    img = np.asarray(img)
-                    h_, w_ = img.shape[:2]
-                    # sub_img_inference
-                    img = cv2.resize(img, (size[0], size[1]))
-                    img_ = sdk_pre(img, mean_, std_)
-                    onnx_inputs = {onnx_session.get_inputs()[0].name: img_.astype(np.float32)}
-                    onnx_predict = onnx_session.run(None, onnx_inputs)
-                    predict = softmax(onnx_predict[0], 1)
-                    map_, boxes, defects_nums = sdk_post(predict, defcets, Confidence=Confidence, num_thres=num_thres)
-                    mask_vis = label2colormap(map_)
-                    # 绘制最小倾斜框
-                    if boxes:
-                        for box in boxes:
-                            cv2.drawContours(mask_vis, [box], 0, (0, 255, 0), 2)
-                            # 需要输出检出box信息的话, 注意把+h_*i, +w_*j叠加到sub_img的坐标值上, 得到整图上的坐标值.
-                            box1 = [[a[0]+h_*i, a[1]+w_*j] for a in box]
-                            cv2.putText(mask_vis, ''.join(str(a)+',' for a in box1), box1[0], cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 2)
-                            img_save = cv2.addWeighted(mask_vis, 0.7, img, 0.3, 10)
-                            cv2.imwrite(os.path.join(cuted_infer_dir, Name))
-            # 合并suub_img的inference_res
-            full_ = merge(cuted_infer_dir, roi, split_target, h_, w_)
-            cv2.imwrite(os.path.join(test_dir, im_name), full_)
-                    
+        elif im_name.split('-')[1] == '2':
+            roi = rois[0]
+            cuted_dir = os.path.join(test_dir, 'right')
+            cuted_infer_dir = os.path.join(test_dir, 'right_res')
+            mkdir(cuted_dir)
+            mkdir(cuted_infer_dir)
+        # 落盘sub_imgs, j_i是sub_bin的索引.sub_img的检出box的坐标信息需换算至整图坐标,需要此索引信息.
+        roi_cut_imgtest(left_or_right_img, roi, split_target, cuted_dir)
+
+        # inference单张子图
+        for i in range(split_target[0]):
+            for j in range(split_target[1]):
+                Name = name.split('.')[0]+'_{}_{}.bmp'.format(j,i)
+                img_name = os.path.join(cuted_dir, Name)
+                img_base = Image.open(img_name).convert('RGB')
+                img_base = np.asarray(img_base)
+                h_, w_ = img_base.shape[:2]
+
+                # sub_img_inference, scale sub_img
+                img = cv2.resize(img_base, (size[0], size[1]))
+                img_ = sdk_pre(img, mean_, std_)
+                onnx_inputs = {onnx_session.get_inputs()[0].name: img_.astype(np.float32)}
+                onnx_predict = onnx_session.run(None, onnx_inputs)
+                predict = softmax(onnx_predict[0], 1)
+                map_, boxes, defects_nums = sdk_post(predict, defcets, Confidence=Confidence, num_thres=num_thres)
+                mask_vis = label2colormap(map_)
+                # 绘制最小倾斜框
+                if boxes:
+                    for box in boxes:
+                        cv2.drawContours(mask_vis, [box], 0, (0, 255, 0), 1)
+
+                        # 待优化..
+                        # 需要输出检出box信息的话, 注意把+h_*i, +w_*j叠加到sub_img的坐标值上, 得到整图上的坐标值.
+                        box1 = [[a[0]+h_*i, a[1]+w_*j] for a in box]
+                        cv2.putText(mask_vis, ''.join(str(a)+',' for a in box1), box[1], cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 2)
+
+                img_save = cv2.addWeighted(mask_vis, 0.7, img, 0.3, 10)
+                # re_scale sub_img
+                sub_inference_img = cv2.resize(img_save, (w_, h_))
+                print('save sub inference result ~.')
+                cv2.imwrite(os.path.join(cuted_infer_dir, Name), sub_inference_img)
+        # 合并suub_img的inference_res
+        full_ = merge(H_full, W_full, name, cuted_infer_dir, roi, split_target, h_, w_)
+        cv2.imwrite(os.path.join(res_dir, im_name), full_)
+ 
