@@ -26,14 +26,17 @@ def merge_imgs():
         print(img.shape)
 
         # Image 读图, 得到RGB格式的
-        img = Image.open(os.path.join(dir_, im))
-        img = np.asarray(img)
+        # img = Image.open(os.path.join(dir_, im))
+        # img = np.asarray(img)
+        # img_gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
         # print(img.size)
 
         # img = img[:,:,0]
 
         # print(im, img[3333][3333])  # img3个通道的取值并不一样
         img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        print(img_gray.shape)
+        cv2.imwrite(os.path.join(dir_, 'gray_'+im), img_gray)  
         gray_imgs.append(img_gray)
     # cv2.imwrite(os.path.join(dir_, 'merged.bmp'), cv2.merge(gray_imgs))  
 
