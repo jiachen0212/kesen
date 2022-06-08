@@ -68,6 +68,7 @@ def find_farthest_two_points(points, metric="euclidean"):
 def sdk_post(predict, defects, Confidence=None, num_thres=None):
     defects_nums = [0]*len(defects)
     boxes = []
+    scores = []
     num_class = predict.shape[1]
     map_ = np.argmax(onnx_predict[0], axis=1)
     # if a == 0 and b == 0:
@@ -113,9 +114,10 @@ def sdk_post(predict, defects, Confidence=None, num_thres=None):
                         # 统计缺陷个数
                         defects_nums[i] += 1
                         boxes.append(box_d)
+                        scores.append(np.round(score_j))
                         temo_predict += temp * i 
 
-    return temo_predict, boxes, defects_nums
+    return temo_predict, boxes, defects_nums, scores
 
 
 def roi_cut_imgtest(img_path, roi, split_target, cuted_dir):
@@ -149,8 +151,8 @@ def merge(H_full, W_full, name, sub_imgs_dir, roi, split_target, h_, w_):
 if __name__ == "__main__":
     
     # 在这里选择: 'tongzhou' or 'suidao'
-    guang_type = 'tongzhou'
-    onnx_name = '500.onnx'
+    guang_type = 'suidao'
+    onnx_name = '1000.onnx'
 
     # 模型的mean和std
     mean_ = [123.675, 116.28, 103.53]
@@ -223,18 +225,17 @@ if __name__ == "__main__":
                 onnx_inputs = {onnx_session.get_inputs()[0].name: img_.astype(np.float32)}
                 onnx_predict = onnx_session.run(None, onnx_inputs)
                 predict = softmax(onnx_predict[0], 1)
-                map_, boxes, defects_nums = sdk_post(predict, defects, Confidence=Confidence, num_thres=num_thres)
+                map_, boxes, defects_nums, scores = sdk_post(predict, defects, Confidence=Confidence, num_thres=num_thres)
                 mask_vis = label2colormap(map_)
                 # 绘制矩形框
                 if boxes:
-                    for box in boxes:
+                    for ind, box in enumerate(boxes):
                         cv2.rectangle(mask_vis, (box[0], box[1]), (box[2], box[3]), (0, 255, 0), 1)
                         box = [box[:2], box[2:]]
-                        # roi[1]+h_*j, roi[0]+w_*i叠加到sub_img的坐标上, 映射回整图坐标值.
-                        # 并且输入模型inference的尺寸虽小了, 需要scale_h,w乘回来.
                         box1 = [[int(scale_w*a[0])+w_*i+roi[0], int(scale_h*a[1])+h_*j+roi[1]] for a in box] 
-                        print(box, h_, w_, i, j, roi, box1)
-                        cv2.putText(mask_vis, ''.join(str(a)+',' for a in box1), box[0], cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 2)
+                        text = '{}, '.format(scores[ind])
+                        text += ''.join(str(a)+',' for a in box1)
+                        cv2.putText(mask_vis, text, box[0], cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 2)
                 img_save = cv2.addWeighted(mask_vis, 0.7, img, 0.3, 10)
                 # re_scale sub_img
                 sub_inference_img = cv2.resize(img_save, (w_, h_))
