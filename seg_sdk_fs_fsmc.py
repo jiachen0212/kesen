@@ -116,11 +116,14 @@ def sdk_post(predict, defects, Confidence=None, num_thres=None):
     return temo_predict, boxes, defects_nums
 
 
-def roi_cut_imgtest(img_path, roi, split_target, cuted_dir):
+def roi_cut_imgtest(guang_type, img_path, roi, split_target, cuted_dir):
     basename = os.path.basename(img_path)
     name = basename.split('.')[0]
     img = Image.open(img_path)
     img = np.asarray(img)
+    # fsmc保存的图ndim==2
+    # if guang_type == 'fsmc':
+    img = cv2.merge([img, img, img])
     img_roied = img[roi[1]:roi[3], roi[0]:roi[2]]
     h, w = img_roied.shape[:2]
     sub_h, sub_w = h//split_target[1], w//split_target[0]
@@ -147,8 +150,8 @@ def merge(H_full, W_full, name, sub_imgs_dir, roi, split_target, h_, w_):
 if __name__ == "__main__":
     
     # 在这里选择: 'fs' or 'fsmc'
-    guang_type = 'fsmc'
-    onnx_name = '2000.onnx'
+    guang_type = 'fs'
+    onnx_name = '800.onnx'
 
     # 模型的mean和std
     mean_ = [123.675, 116.28, 103.53]
@@ -189,6 +192,8 @@ if __name__ == "__main__":
         im_name = os.path.basename(test_im)
         name = im_name.split('.')[0]
         full_img = Image.open(test_im)
+        # full_img_np = np.asarray(full_img)
+        # print(full_img_np.ndim)
         H_full, W_full = full_img.size[:2]  
         # fs 和 fsmc 图像没有物料在左或右的区别
         cuted_dir = os.path.join(test_dir, 'sub')
@@ -196,7 +201,7 @@ if __name__ == "__main__":
         mkdir(cuted_dir)
         mkdir(cuted_infer_dir)
         # 落盘sub_imgs, j_i是sub_bin的索引.sub_img的检出box的坐标信息需换算至整图坐标,需要此索引信息.
-        roi_cut_imgtest(test_im, roi, split_target, cuted_dir)
+        roi_cut_imgtest(guang_type, test_im, roi, split_target, cuted_dir)
 
         # inference单张子图
         for i in range(split_target[0]):
@@ -209,8 +214,6 @@ if __name__ == "__main__":
                 scale_h, scale_w = h_ / size[1], w_ / size[0]
                 # sub_img_inference, scale sub_img
                 img = cv2.resize(img_base, (size[0], size[1]))
-                if guang_type == 'fsmc':
-                    img = cv2.merge([img, img, img])
                 img_ = sdk_pre(img, mean_, std_)
                 onnx_inputs = {onnx_session.get_inputs()[0].name: img_.astype(np.float32)}
                 onnx_predict = onnx_session.run(None, onnx_inputs)
