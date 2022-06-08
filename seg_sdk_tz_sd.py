@@ -65,7 +65,7 @@ def find_farthest_two_points(points, metric="euclidean"):
     return [hullpoints[bestpair[0]], hullpoints[bestpair[1]]]
 
 
-def sdk_post(predict, defects, Confidence=None, num_thres=None):
+def sdk_post(onnx_predict, predict, defects, Confidence=None, num_thres=None):
     defects_nums = [0]*len(defects)
     boxes = []
     scores = []
@@ -114,7 +114,7 @@ def sdk_post(predict, defects, Confidence=None, num_thres=None):
                         # 统计缺陷个数
                         defects_nums[i] += 1
                         boxes.append(box_d)
-                        scores.append(np.round(score_j))
+                        scores.append(np.round(score_j, 3))
                         temo_predict += temp * i 
 
     return temo_predict, boxes, defects_nums, scores
@@ -225,7 +225,7 @@ if __name__ == "__main__":
                 onnx_inputs = {onnx_session.get_inputs()[0].name: img_.astype(np.float32)}
                 onnx_predict = onnx_session.run(None, onnx_inputs)
                 predict = softmax(onnx_predict[0], 1)
-                map_, boxes, defects_nums, scores = sdk_post(predict, defects, Confidence=Confidence, num_thres=num_thres)
+                map_, boxes, defects_nums, scores = sdk_post(onnx_predict, predict, defects, Confidence=Confidence, num_thres=num_thres)
                 mask_vis = label2colormap(map_)
                 # 绘制矩形框
                 if boxes:
