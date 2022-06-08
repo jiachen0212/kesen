@@ -7,6 +7,7 @@ fs fsmc 的sdk脚本
 import warnings
 warnings.filterwarnings("ignore")
 import cv2
+cv2.CV_IO_MAX_IMAGE_PIXELS = 210224000
 import numpy as np
 import onnxruntime as ort
 from scipy.special import softmax
@@ -65,9 +66,10 @@ def find_farthest_two_points(points, metric="euclidean"):
     return [hullpoints[bestpair[0]], hullpoints[bestpair[1]]]
 
 
-def sdk_post(predict, defects, Confidence=None, num_thres=None):
+def sdk_post(onnx_predict, predict, defects, Confidence=None, num_thres=None):
     defects_nums = [0]*len(defects)
     boxes = []
+    scores = []
     num_class = predict.shape[1]
     map_ = np.argmax(onnx_predict[0], axis=1)
     # print(f'pixel_classes: {np.unique(map_)}')
@@ -100,20 +102,15 @@ def sdk_post(predict, defects, Confidence=None, num_thres=None):
                         rect = cv2.boundingRect(cnt)
                         rect = [a for a in rect]
                         box_d = rect[:2] + [rect[0]+rect[2], rect[1]+rect[3]] 
-
-                        # 得到缺陷的最小外接矩形
-                        # rect = cv2.minAreaRect(cnt)
-                        # # 得到旋转矩形的端点
-                        # box = cv2.boxPoints(rect)
-                        # box_d = np.int0(box)
                         
                         # 统计缺陷个数
                         defects_nums[i] += 1
+                        scores.append(np.round(score_j, 3))
                         boxes.append(box_d)
                         temo_predict += temp * i
                        
 
-    return temo_predict, boxes, defects_nums
+    return temo_predict, boxes, defects_nums, scores
 
 
 def roi_cut_imgtest(guang_type, img_path, roi, split_target, cuted_dir):
@@ -136,13 +133,15 @@ def roi_cut_imgtest(guang_type, img_path, roi, split_target, cuted_dir):
 
 def merge(H_full, W_full, name, sub_imgs_dir, roi, split_target, h_, w_):
     full_img = np.zeros((h_*split_target[1], w_*split_target[0], 3))
-    full_ = np.zeros((W_full, H_full, 3))
+    full_ = np.zeros((W_full, H_full, 3), dtype=np.int8)
     for i in range(split_target[0]):
         for j in range(split_target[1]):
+            # path = os.path.join(sub_imgs_dir, '{}_{}_{}.bmp'.format(name, j, i))
             path = os.path.join(sub_imgs_dir, '{}_{}_{}.bmp'.format(name, j, i))
             img = cv2.imread(path)  # 竖直_水平
             full_img[h_*j:h_*(j+1), w_*i:w_*(i+1)] = img
-    full_[roi[1]:roi[3], roi[0]:roi[2],:] = full_img
+    hh, ww = full_img.shape[:2]
+    full_[roi[1]:roi[1]+hh, roi[0]:roi[0]+ww,:] = full_img
 
     return full_
 
@@ -150,8 +149,8 @@ def merge(H_full, W_full, name, sub_imgs_dir, roi, split_target, h_, w_):
 if __name__ == "__main__":
     
     # 在这里选择: 'fs' or 'fsmc'
-    guang_type = 'fs'
-    onnx_name = '800.onnx'
+    guang_type = 'fsmc'
+    onnx_name = '2000.onnx'
 
     # 模型的mean和std
     mean_ = [123.675, 116.28, 103.53]
@@ -190,7 +189,7 @@ if __name__ == "__main__":
 
     for test_im in test_paths:
         im_name = os.path.basename(test_im)
-        name = im_name.split('.')[0]
+        name, postfix = os.path.splitext(im_name)[:2]
         full_img = Image.open(test_im)
         # full_img_np = np.asarray(full_img)
         # print(full_img_np.ndim)
@@ -218,24 +217,29 @@ if __name__ == "__main__":
                 onnx_inputs = {onnx_session.get_inputs()[0].name: img_.astype(np.float32)}
                 onnx_predict = onnx_session.run(None, onnx_inputs)
                 predict = softmax(onnx_predict[0], 1)
-                map_, boxes, defects_nums = sdk_post(predict, defects, Confidence=Confidence, num_thres=num_thres)
+                map_, boxes, defects_nums, scores = sdk_post(onnx_predict, predict, defects, Confidence=Confidence, num_thres=num_thres)
                 mask_vis = label2colormap(map_)
                 # 绘制矩形框
                 if boxes:
-                    for box in boxes:
+                    for ind, box in enumerate(boxes):
                         cv2.rectangle(mask_vis, (box[0], box[1]), (box[2], box[3]), (0, 255, 0), 1)
                         box = [box[:2], box[2:]]
                         # roi[1]+h_*j, roi[0]+w_*i叠加到sub_img的坐标上, 映射回整图坐标值.
                         # 并且输入模型inference的尺寸虽小了, 需要scale_h,w乘回来.
                         box1 = [[int(scale_w*a[0])+w_*i+roi[0], int(scale_h*a[1])+h_*j+roi[1]] for a in box] 
-                        cv2.putText(mask_vis, ''.join(str(a)+',' for a in box1), box[0], cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 2)
+                        text = '{}, '.format(scores[ind])
+                        text += ''.join(str(a)+',' for a in box1)
+                        cv2.putText(mask_vis, text, box[0], cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 2)
                 img_save = cv2.addWeighted(mask_vis, 0.7, img, 0.3, 10)
                 # img_save = cv2.cvtColor(img_save, cv2.COLOR_BGR2GRAY)
                 # re_scale sub_img
                 sub_inference_img = cv2.resize(img_save, (w_, h_))
-                print('save sub inference result ~.')
+                print('save sub inference result ~.') 
                 cv2.imwrite(os.path.join(cuted_infer_dir, Name), sub_inference_img)
         # 合并suub_img的inference_res
         full_ = merge(H_full, W_full, name, cuted_infer_dir, roi, split_target, h_, w_)
-        cv2.imwrite(os.path.join(res_dir, im_name), full_)
+        if guang_type == 'fs':
+            cv2.imwrite(os.path.join(res_dir, name+'.jpg'), full_)
+        else:
+            cv2.imwrite(os.path.join(res_dir, im_name), full_)
  
