@@ -209,6 +209,7 @@ if __name__ == "__main__":
                 Name = name.split('.')[0]+'_{}_{}.bmp'.format(j,i)
                 img_name = os.path.join(cuted_dir, Name)
                 img_base = cv2.imread(img_name)
+                img_base = cv2.cvtColor(img_base, cv2.COLOR_BGR2RGB)
                 img = cv2.resize(img_base, (size[0], size[1]))
                 img_ = sdk_pre(img, mean_, std_)
                 onnx_inputs = {onnx_session.get_inputs()[0].name: img_.astype(np.float32)}
