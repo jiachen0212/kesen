@@ -118,6 +118,7 @@ def roi_cut_imgtest(img_path, roi, split_target, cuted_dir):
     for i in range(split_target[0]):
         for j in range(split_target[1]):
             sub_img = img_roied[sub_h*j: sub_h*(j+1), sub_w*i: sub_w*(i+1)]
+            sub_img = v2.cvtColor(sub_img, cv2.COLOR_RGB2BGR)
             sub_name = name.split('.')[0]+'_{}_{}.bmp'.format(j,i)
             cv2.imwrite(os.path.join(cuted_dir, sub_name), sub_img)
     return sub_h, sub_w
@@ -208,7 +209,6 @@ if __name__ == "__main__":
                 Name = name.split('.')[0]+'_{}_{}.bmp'.format(j,i)
                 img_name = os.path.join(cuted_dir, Name)
                 img_base = cv2.imread(img_name)
-                img_base = cv2.cvtColor(img_base, cv2.COLOR_BGR2RGB)
                 img = cv2.resize(img_base, (size[0], size[1]))
                 img_ = sdk_pre(img, mean_, std_)
                 onnx_inputs = {onnx_session.get_inputs()[0].name: img_.astype(np.float32)}
