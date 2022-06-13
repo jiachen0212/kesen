@@ -69,6 +69,7 @@ def find_farthest_two_points(points, metric="euclidean"):
 def sdk_post(onnx_predict, predict, Confidence=None, num_thres=None):
     scores = []
     bboxes = []
+    areas = []
     num_class = predict.shape[1]
     map_ = np.argmax(onnx_predict[0], axis=1)
     mask_ = map_[0, :, :]
@@ -101,8 +102,9 @@ def sdk_post(onnx_predict, predict, Confidence=None, num_thres=None):
                     temo_predict += temp * label 
                     scores.append(mean_score)
                     bboxes.append([x, y, x+w, y+h])
+                    areas.append(area)
 
-            return temo_predict, scores, bboxes
+            return temo_predict, scores, bboxes, areas
 
 
 def roi_cut_imgtest(img_path, roi, split_target, cuted_dir):
@@ -212,7 +214,7 @@ if __name__ == "__main__":
                 onnx_inputs = {onnx_session.get_inputs()[0].name: img_.astype(np.float32)}
                 onnx_predict = onnx_session.run(None, onnx_inputs)
                 predict = softmax(onnx_predict[0], 1)
-                map_, scores, boxes = sdk_post(onnx_predict, predict, Confidence=Confidence, num_thres=num_thres)
+                map_, scores, boxes, areas = sdk_post(onnx_predict, predict, Confidence=Confidence, num_thres=num_thres)
                 mask_vis = label2colormap(map_)
                 # 绘制矩形框
                 if boxes:
@@ -220,8 +222,10 @@ if __name__ == "__main__":
                         cv2.rectangle(mask_vis, (box[0], box[1]), (box[2], box[3]), (0, 255, 0), 1)
                         box = [box[:2], box[2:]]
                         box1 = [[int(scale_w*a[0])+w_*i+roi[0], int(scale_h*a[1])+h_*j+roi[1]] for a in box] 
-                        text = '{}, '.format(scores[ind])
+                        text = '{}, '.format(np.round(scores[ind], 2))
                         text += ''.join(str(a)+',' for a in box1)
+                        text += '{}'.format(areas[ind]*scale_w*scale_h)
+                        print('i:{}, j: {}, text: {}'.format(i, j, text))
                         cv2.putText(mask_vis, text, box[0], cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 2)
                 img_save = cv2.addWeighted(mask_vis, 0.7, img, 0.3, 10)
                 # re_scale sub_img
@@ -231,4 +235,3 @@ if __name__ == "__main__":
         # 合并suub_img的inference_res
         full_ = merge(H_full, W_full, name, cuted_infer_dir, roi, split_target, h_, w_)
         cv2.imwrite(os.path.join(res_dir, im_name), full_)
- 
