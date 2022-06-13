@@ -118,7 +118,7 @@ def roi_cut_imgtest(img_path, roi, split_target, cuted_dir):
     for i in range(split_target[0]):
         for j in range(split_target[1]):
             sub_img = img_roied[sub_h*j: sub_h*(j+1), sub_w*i: sub_w*(i+1)]
-            sub_img = v2.cvtColor(sub_img, cv2.COLOR_RGB2BGR)
+            sub_img = cv2.cvtColor(sub_img, cv2.COLOR_RGB2BGR)
             sub_name = name.split('.')[0]+'_{}_{}.bmp'.format(j,i)
             cv2.imwrite(os.path.join(cuted_dir, sub_name), sub_img)
     return sub_h, sub_w
