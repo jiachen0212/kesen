@@ -61,8 +61,60 @@ def merge_jsons():
         json.dump(merged_json, writer, indent=4)
     
 
+def cv_imread_by_np(filePath, clr_type=cv2.IMREAD_UNCHANGED):
+    cv_img = cv2.imdecode(np.fromfile(filePath, dtype=np.uint8), clr_type)
+
+    return cv_img
+
+def cv_imwrite(image, dst):
+    name = os.path.basename(dst)
+    cuted_dirfix, postfix = os.path.splitext(name)[:2]
+    cv2.imencode(ext=postfix, img=image)[1].tofile(dst)
+
 if __name__ == "__main__":
 
-    merge_imgs()
+    # merge_imgs()
     # merge_jsons()
+    # roi = (0, 2341, 7081, 21465)
+    # roi = (0, 2341, 3909, 13323)
+    # image = Image.open(r'D:\mac_air_backup\chenjia\Download\Smartmore\2022\DL\kesen\codes\locate\train_dir\image.bmp')
+    # image = np.asarray(image)
+    # roi_img = image[roi[1]:roi[3], roi[0]:roi[2]]
+    # roi_img = cv2.cvtColor(roi_img, cv2.COLOR_RGB2BGR)
+    # cv2.imwrite(r'D:\mac_air_backup\chenjia\Download\Smartmore\2022\DL\kesen\codes\locate\train_dir\template.bmp', roi_img)
 
+    # roi = (1405, 2285, 8192, 21400)
+    # roi = (1405, 2285, 6809, 21400)
+    # image = Image.open(r'D:\mac_air_backup\chenjia\Download\Smartmore\2022\DL\kesen\codes\locate\train_dir\image.bmp')
+    # image = np.asarray(image)
+    # roi_img = image[roi[1]:roi[3], roi[0]:roi[2]]
+    # roi_img = cv2.cvtColor(roi_img, cv2.COLOR_RGB2BGR)
+    # cv2.imwrite(r'D:\mac_air_backup\chenjia\Download\Smartmore\2022\DL\kesen\codes\locate\train_dir\template.bmp', roi_img)
+
+
+    # root = r'D:\mac_air_backup\chenjia\Download\Smartmore\2022\DL\kesen\data\隧道\腐蚀点\银白色\0524'
+    # ims = ['1-1-8.bmp', '1-2-8.bmp']
+    # for im in ims:
+    #     path = os.path.join(root, im)
+    #     img = Image.open(path)
+    #     img = np.asarray(img)
+    #     temp = [a for a in img[int(img.shape[0]*2.2//3)][0]]
+    #     if np.sum(temp) > 0:
+    #         # 'left'
+    #        roi = (0, 2100, 7256, 21640)
+    #        roi_img = img[roi[1]: roi[3], roi[0]:roi[2]]
+    #        cv_imwrite(roi_img, r'D:\mac_air_backup\chenjia\Download\Smartmore\2022\DL\kesen\data\1.jpg')
+
+    path_ = r'D:\mac_air_backup\chenjia\Download\Smartmore\2022\DL\kesen\codes\locate\infrence_dir'
+    im = r'25-1-3.bmp'
+    js = r'25-1-3.json'
+    img = np.asarray(Image.open(os.path.join(path_, im)))
+    jss = json.load(open(os.path.join(path_, js), 'r'))
+    p1, p2 = jss['area_points'][0], jss['area_points'][2]
+    roi = p1 + p2
+    # point_color = (255, 255, 255) # BGR
+    # thickness = 10
+    # lineType = 8
+    # cv2.rectangle(img, p1, p2, point_color, thickness, lineType)
+    # cv_imwrite(img, r'D:\mac_air_backup\chenjia\Download\Smartmore\2022\DL\kesen\codes\locate\infrence_dir\1.jpg')
+    print(roi)

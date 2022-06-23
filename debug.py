@@ -238,6 +238,56 @@ def split_image(path_image, split_target,out_dir=None, roi=None):
             crop_area_with_seg_annotation(img,crop_area,cropped_img_name,anno_template)
 
 
+
+def split_image1(path_image, split_target,img_roi, out_dir=None):
+    img = Image.open(path_image)
+    w, h = img.size
+    roi = img_roi[os.path.basename(path_image)]
+    print(roi, '1')
+    w, h = min(roi[2]-roi[0], w), min(roi[3]-roi[1],h)
+
+    target_w, target_h = split_target
+    step_w = w/target_w
+    step_h = h/target_h
+
+    pre_name, ext = os.path.splitext(path_image)
+    anno_template = None
+    if os.path.isfile(pre_name+".json"):
+        with open(pre_name+".json", "r", encoding="utf-8") as reader:
+            anno_template = json.load(reader)
+
+    for i in range(target_w):
+        for j in range(target_h):
+            # 处理输出图像路径&名称
+            if not out_dir:
+                pre, ext = os.path.splitext(path_image)
+            else:
+                image_name_ext = os.path.split(path_image)[1]
+                image_name = os.path.splitext(image_name_ext)[0]
+                pre = os.path.join(out_dir,image_name)
+            cropped_img_name = "{}_{}_{}_{}".format(pre,i,j,ext)
+
+            # 处理子图裁剪
+            left = step_w * i + roi[0] if roi else step_w * i
+            upper = step_h * j + roi[1] if roi else step_h * j
+            right = step_w * (i+1) + roi[0] if roi else step_w * (i+1)
+            lower = step_h * (j+1) + roi[1] if roi else step_h * (j+1)
+            if roi:
+                if right>roi[2]:
+                    right = roi[2]
+                if lower>roi[3]:
+                    lower = roi[3]
+            else:
+                if right > w:
+                    right = w
+                if lower > h:
+                    lower = h
+
+            crop_area = (left, upper, right, lower) # (left, upper, right, lower)
+            # print(i,j,crop_area)
+            crop_area_with_seg_annotation(img,crop_area,cropped_img_name,anno_template)
+
+
 def split_img_dir(source_path,split_target,out_dir=None,roi=None):
     for root,dirs,files in os.walk(source_path):
         for filename in files:
@@ -247,6 +297,15 @@ def split_img_dir(source_path,split_target,out_dir=None,roi=None):
                 os.makedirs(tmp_dir_out, exist_ok=True)
                 split_image(os.path.join(root,filename),split_target,tmp_dir_out,roi)
 
+
+def split_img_dir1(source_path,split_target,out_dir=None,roi=None):
+    for root,dirs,files in os.walk(source_path):
+        for filename in files:
+            name, ext = os.path.splitext(filename)
+            if ext in ('.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.pgm', '.tif', '.tiff', '.webp'):
+                tmp_dir_out = root.replace(source_path,out_dir)
+                os.makedirs(tmp_dir_out, exist_ok=True)
+                split_image1(os.path.join(root,filename),split_target,roi,tmp_dir_out)
 
 def check_first_sub_img(out_dir):
     ims = os.listdir(out_dir)
@@ -263,6 +322,9 @@ def help(source_path, roi, split_target, out_dir):
 
     # roi = (918,0,7594, 7594)  # 横,纵 起终点.
     # split_target = (1, 2)
-    split_img_dir(source_path,split_target,out_dir,roi)
+    if len(roi) == 4:
+        split_img_dir(source_path,split_target,out_dir,roi)
+    else:
+        split_img_dir1(source_path,split_target,out_dir,roi)
 
     # check_first_sub_img(out_dir)
