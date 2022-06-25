@@ -18,7 +18,7 @@ other:
   batch_size: &batch_size 2
   val_batch_size: &val_batch_size 1
   input_size: &input_size [2000, 3000]
-  lr: &lr 0.01
+  lr: &lr 0.001
   rotate_angle: &rotate_angle [-180,180]
   label_map: &label_map
     - bg
@@ -75,11 +75,11 @@ data:
       # - type: SMore_seg::RandomScale
         # scale: [0.8, 1.25]
         # aspect_ratio: [0.8, 1.25]
-      - type: RandomRotation
-        prob: 0.5
-        hook_cfg:
-          ignore_label: *ignore_label
-        angle: *rotate_angle
+      # - type: RandomRotation
+      #   prob: 0.5
+      #   hook_cfg:
+      #     ignore_label: *ignore_label
+      #   angle: *rotate_angle
       # - type: SMore_seg::RandomCrop
       #   output_size: *input_size
       # - type: RandomApply
@@ -137,7 +137,7 @@ model:
   type: EncoderDecoder
   backbone:
     type: HRNetW18SmallV2
-    pretrained_weights: /newdata/jiachen/project/pretrain/hrnet_w18_small_v2.pth
+    pretrained_weights: /mnt/yfs/sharedir/industrial/PUBLIC/classification/imagenet_pretrained/hrnet_w18_v2.pth
   head:
     type: FCNHead
     num_classes: *num_classes
