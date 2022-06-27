@@ -181,6 +181,7 @@ if __name__ == "__main__":
     size = [2000, 3000]
     # 导入onnx
     onnx_path = os.path.join(root_path, 'suidao', 'station3_20220626_suidao_2000iter.onnx')
+    
     onnx_session = ort.InferenceSession(onnx_path)
 
     for left_or_right_img in test_paths:
