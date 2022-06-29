@@ -89,7 +89,7 @@ def heixianABC(heixian_len, defect_values, heixian_A, heixian_B, lengthB, distan
     return pop_ind
 
 
-def sdk_post(input_img, defect_list, onnx_predict, predict, heixianban, Confidence=None, num_thres=None):
+def sdk_post(input_img, defect_list, onnx_predict, predict, heixianban, scale_h, Confidence=None, num_thres=None):
     predict_result = dict()  
     num_class = predict.shape[1]
     map_ = np.argmax(onnx_predict[0], axis=1)
@@ -146,8 +146,8 @@ def sdk_post(input_img, defect_list, onnx_predict, predict, heixianban, Confiden
 
             # 客户给到定制信息
             heixian_A, heixian_B, heixian_C = heixianban[0][:3]   
-            lengthB, lengthC = heixianban[1][:2]
-            distanceB, distanceC = heixianban[2][:2]
+            lengthB, lengthC = heixianban[1][0] / scale_h, heixianban[1][1] / scale_h
+            distanceB, distanceC = heixianban[2][0] / scale_h, heixianban[2][1] / scale_h
             heixian_B_num, heixian_C_num = heixianban[3][:2]
             
             pop_b = heixianABC(heixian_len, defect_values, heixian_A, heixian_B, lengthB, distanceB, heixian_B_num, boxes)
@@ -181,6 +181,7 @@ def roi_cut_imgtest(img_path, roi, split_target, cuted_dir):
 
 
 def merge(H_full, W_full, name, sub_imgs_dir, roi, split_target, h_, w_):
+
     full_img = np.zeros((h_*split_target[1], w_*split_target[0], 3))
     full_ = np.zeros((W_full, H_full, 3))
     for i in range(split_target[0]):
@@ -261,7 +262,7 @@ if __name__ == "__main__":
         h_, w_ = roi_cut_imgtest(left_or_right_img, roi, split_target, cuted_dir)
         
         # 子图进入模型的缩放系数
-        scale_h, scale_w = h_ / size[1], w_ / size[0]
+        scale_h, scale_w = h_ / size[1], w_ / size[0] 
         num_thres = [a / (scale_h*scale_w) for a in num_thres]
         # inference单张子图
         for i in range(split_target[0]):
@@ -276,7 +277,7 @@ if __name__ == "__main__":
                 onnx_inputs = {onnx_session.get_inputs()[0].name: img_.astype(np.float32)}
                 onnx_predict = onnx_session.run(None, onnx_inputs)
                 predict = softmax(onnx_predict[0], 1)
-                map_, predict_result = sdk_post(img, defects, onnx_predict, predict, heixianban, Confidence=Confidence, num_thres=num_thres)
+                map_, predict_result = sdk_post(img, defects, onnx_predict, predict, heixianban, scale_h, Confidence=Confidence, num_thres=num_thres)
                 scores, boxes, areas = [],[],[]
                 for k, v in predict_result.items():
                     if len(v[0]):
@@ -292,7 +293,7 @@ if __name__ == "__main__":
                         box1 = [[int(scale_w*a[0])+w_*i+roi[0], int(scale_h*a[1])+h_*j+roi[1]] for a in box] 
                         text = '{}, '.format(np.round(scores[ind], 2))
                         text += ''.join(str(a)+',' for a in box1)
-                        text += '{}'.format(areas[ind]*scale_w*scale_h)
+                        text += '{}'.format(int(areas[ind]*scale_w*scale_h))
                         cv2.putText(mask_vis, text, box[0], cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 2)
                 img_save = cv2.addWeighted(mask_vis, 0.7, img, 0.3, 10)
                 # re_scale sub_img
