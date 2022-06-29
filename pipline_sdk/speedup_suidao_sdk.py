@@ -74,14 +74,14 @@ def heixianABC(heixian_len, defect_values, heixian_A, heixian_B, lengthB, distan
     # 这些ABvalue_lower_lengthB要做距离聚类, 聚类后条数<heixian_B_num就舍弃不检出
     ABvalue_lower_lengthB = [ind for ind in ABvalue_indexs if boxes[ind][3]-boxes[ind][1] <= lengthB]
 
-    for ind1 in ABvalue_lower_lengthB:
+    for i in range(ABvalue_lower_lengthB):
         bins = []
-        for ind2 in ABvalue_lower_lengthB:
-            center1 = [(boxes[ind1][0]+boxes[ind1][2])/2, (boxes[ind1][1]+boxes[ind1][3])/2]
-            center2 = [(boxes[ind2][0]+boxes[ind2][2])/2, (boxes[ind2][1]+boxes[ind2][3])/2]
+        for j in range(i, ABvalue_lower_lengthB):
+            center1 = [(boxes[ABvalue_lower_lengthB[i]][0]+boxes[ABvalue_lower_lengthB[i]][2])/2, (boxes[ABvalue_lower_lengthB[i]][1]+boxes[ABvalue_lower_lengthB[i]][3])/2]
+            center2 = [(boxes[ABvalue_lower_lengthB[j]][0]+boxes[ABvalue_lower_lengthB[j]][2])/2, (boxes[ABvalue_lower_lengthB[j]][1]+boxes[ABvalue_lower_lengthB[j]][3])/2]
             # 中心点abs(x)<=10,认为heixain在一条直线上 
             if abs(center1[0] - center2[0]) <= 10 and abs(center1[1] - center2[1]) <= distanceB:
-                bins.append(ind2)
+                bins.append(ABvalue_lower_lengthB[j])
         if len(bins) < heixian_B_num:
             pop_ind.extend(bins)
     pop_ind = list(set(pop_ind))
