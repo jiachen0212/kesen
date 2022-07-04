@@ -74,7 +74,7 @@ def heixianABC(heixian_len, defect_values, heixian_A, heixian_B, lengthB, distan
     # 这些ABvalue_lower_lengthB要做距离聚类, 聚类后条数<heixian_B_num就舍弃不检出
     ABvalue_lower_lengthB = [ind for ind in ABvalue_indexs if boxes[ind][3]-boxes[ind][1] <= lengthB]
 
-    for i in range(ABvalue_lower_lengthB):
+    for i in range(len(ABvalue_lower_lengthB)):
         bins = []
         for j in range(i, ABvalue_lower_lengthB):
             center1 = [(boxes[ABvalue_lower_lengthB[i]][0]+boxes[ABvalue_lower_lengthB[i]][2])/2, (boxes[ABvalue_lower_lengthB[i]][1]+boxes[ABvalue_lower_lengthB[i]][3])/2]
