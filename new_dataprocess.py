@@ -72,10 +72,11 @@ def split_left_right(path, left_dir, right_dir, guang=None):
         org = os.path.join(path, file) 
         img_pil = Image.open(org)
         img = np.asarray(img_pil)
-        temp1 = [a for a in img[int(img.shape[0]//2)][0]]
-        temp2 = [a for a in img[int(img.shape[0]//2)][0]]
+        half_high = int(img.shape[0]//2)
+        temp1 = np.sum([a for a in img[half_high][0]])
+        temp2 = np.sum(a for a in img[half_high+2300][0])  # apple-logo的长度==2300
 
-        if (np.sum(temp1) + np.sum(temp2)) < 10:
+        if (temp1 + temp2) < 10:
             # 'right'
             org1, std1 = os.path.join(path, file), os.path.join(right_dir, file)
             org2, std2 = os.path.join(path, js_file), os.path.join(right_dir, js_file)
@@ -124,9 +125,11 @@ if __name__ == '__main__':
 
     # flag1 split left right, then cut sub_bins.   
     # flag2 calculate defect nums
+    # fine-tune miss-gs-data
+
 
     guang_type = 'suidao'  
-    flag = 3
+    flag = 1
 
     if guang_type in ['suidao']:
         rois = [(1200, 2026, 8192, 21650), (0, 2100, 7256, 21640)]
@@ -158,7 +161,11 @@ if __name__ == '__main__':
         js_paths = [os.path.join(save_dir, a) for a in os.listdir(save_dir) if '.json' in a]
         for js_path in js_paths:
             json_label_check(js_path, defects, defcet_nums)
-    
+        a = ''
+        for ind, b in enumerate(defects):
+            a += '{}: {}, '.format(b, defcet_nums[ind])
+        print(a)
+
     elif flag == 3:
         test_tun_path = r'D:\mac_air_backup\chenjia\Download\Smartmore\2022\DL\kesen\data\test_tune'
         # clean_dirs_test_tune_data(test_tun_path)
