@@ -19,10 +19,10 @@ from speedup_sdk import sdk_fun
 def clean_dirs_test_tune_data(dir_):
     defect_dirs = [os.path.join(dir_, a) for a in os.listdir(dir_) if '.bmp' not in a]
     for base_dir in defect_dirs:
-        # im_names = [a for a in os.listdir(base_dir) if '.bmp' in a]
-        # for name in im_names:
-        #     temp_path = os.path.join(base_dir, name)
-        #     shutil.copy(temp_path, os.path.join(dir_, name))
+        im_names = [a for a in os.listdir(base_dir) if '.bmp' in a]
+        for name in im_names:
+            temp_path = os.path.join(base_dir, name)
+            shutil.copy(temp_path, os.path.join(dir_, name))
         shutil.rmtree(base_dir)
 
 def roicut_test_tune_data(dir_, left_dir, right_dir, split_target, js_dir=None, train_dir=None, label_json=None, left_roi_js=None, right_roi_js=None):
@@ -119,9 +119,9 @@ if __name__ == '__main__':
     if flag == 1:
         label_json = False
         clean_dirs_test_tune_data(test_tun_path)
-        # js_dir = r'D:\mac_air_backup\chenjia\Download\Smartmore\2022\DL\kesen\codes\locate'
-        # train_dir = r'D:\mac_air_backup\chenjia\Download\Smartmore\2022\DL\kesen\codes\locate\train_dir'
-        # roicut_test_tune_data(test_tun_path, left_dir, right_dir, split_target, js_dir=js_dir, train_dir=train_dir, label_json=label_json, left_roi_js=left_roi_js, right_roi_js=right_roi_js)
+        js_dir = r'D:\mac_air_backup\chenjia\Download\Smartmore\2022\DL\kesen\codes\locate'
+        train_dir = r'D:\mac_air_backup\chenjia\Download\Smartmore\2022\DL\kesen\codes\locate\train_dir'
+        roicut_test_tune_data(test_tun_path, left_dir, right_dir, split_target, js_dir=js_dir, train_dir=train_dir, label_json=label_json, left_roi_js=left_roi_js, right_roi_js=right_roi_js)
     
     elif flag == 2:
         defect_number(left_dir)
