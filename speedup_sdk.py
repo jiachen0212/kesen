@@ -27,6 +27,11 @@ def mkdir(res_dir):
         os.makedirs(res_dir)
 
 
+def cv_imwrite(image, dst):
+    name = os.path.basename(dst)
+    cuted_dirfix, postfix = os.path.splitext(name)[:2]
+    cv2.imencode(ext=postfix, img=image)[1].tofile(dst)
+
 def label2colormap(map_):
     m = map_.astype(np.uint8)
     r, c = m.shape[:2]
@@ -231,7 +236,7 @@ def roi_cut_imgtest(img_path, roi, split_target, cuted_dir):
             sub_img = img_roied[sub_h*j: sub_h*(j+1), sub_w*i: sub_w*(i+1)]
             sub_name = name.split('.')[0]+'_{}_{}.bmp'.format(j, i)
             sub_img_bgr = cv2.cvtColor(sub_img, cv2.COLOR_RGB2BGR)
-            cv2.imwrite(os.path.join(cuted_dir, sub_name), sub_img_bgr)
+            cv_imwrite(sub_img_bgr, os.path.join(cuted_dir, sub_name))
 
     return sub_h, sub_w
 
@@ -239,21 +244,21 @@ def roi_cut_imgtest(img_path, roi, split_target, cuted_dir):
 def merge(H_full, W_full, name, sub_imgs_dir, roi, split_target, h_, w_):
 
     full_img = np.zeros((h_*split_target[1], w_*split_target[0], 3))
+    roi_w, roi_h = W_full, H_full
+    roi3 = min(roi[1] + roi_w, roi[3])
+    roi2 = min(roi[0] + roi_h, roi[2])
+
     full_ = np.zeros((W_full, H_full, 3))
     for i in range(split_target[0]):
         for j in range(split_target[1]):
             path = os.path.join(sub_imgs_dir, '{}_{}_{}.bmp'.format(name, j, i))
             img = cv2.imread(path)  # 竖直_水平
             full_img[h_*j:h_*(j+1), w_*i:w_*(i+1)] = img
-    full_[roi[1]:roi[3], roi[0]:roi[2],:] = full_img
+    full_[roi[1]:roi3, roi[0]:roi2,:] = full_img
 
     return full_
 
 
-def cv_imwrite(image, dst):
-    name = os.path.basename(dst)
-    cuted_dirfix, postfix = os.path.splitext(name)[:2]
-    cv2.imencode(ext=postfix, img=image)[1].tofile(dst)
 
 def sdk_fun(onnx_path, img_full_path, roi, res_dir):
 
@@ -304,8 +309,11 @@ def sdk_fun(onnx_path, img_full_path, roi, res_dir):
     H_full, W_full = full_img.size[:2]
     im_name = os.path.basename(img_full_path)
     name = im_name.split('.')[0]
-    cuted_dir = os.path.join(pre_dir_path, name, 'cuted')
-    cuted_infer_dir = os.path.join(pre_dir_path, name, 'cuted_res')
+    # cuted_dir = os.path.join(pre_dir_path, name, 'cuted')
+    # cuted_infer_dir = os.path.join(pre_dir_path, name, 'cuted_res')
+    cuted_dir = os.path.join(r'C:\Users\15974\Desktop\1', name, 'cuted')
+    cuted_infer_dir = os.path.join(r'C:\Users\15974\Desktop\1', name, 'cuted_res')
+
     mkdir(cuted_dir)
     mkdir(cuted_infer_dir)
     # 落盘sub_imgs, j_i是sub_bin的索引.sub_img的检出box的坐标信息需换算至整图坐标,需要此索引信息.

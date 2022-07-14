@@ -135,7 +135,7 @@ if __name__ == '__main__':
         # 分别inference left_dir, right_dir 
         for im_name, l_roi in left_roi_jsdata.items():
             img_path = os.path.join(left_dir, im_name)
-            sdk_fun(onnx_path, img_path, l_roi)
+            sdk_fun(onnx_path, img_path, l_roi, res_dir)
         for im_name, r_roi in right_roi_jsdata.items():
             img_path = os.path.join(right_dir, im_name)
             sdk_fun(onnx_path, img_path, r_roi, res_dir)
