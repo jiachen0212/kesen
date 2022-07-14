@@ -41,12 +41,13 @@ def roicut_test_tune_data(dir_, left_dir, right_dir, split_target, js_dir=None, 
             shutil.copy(org, os.path.join(right_dir, im_name))  
             if os.path.exists(org_js):
                 shutil.copy(org_js, os.path.join(right_dir, im_name.split('.')[0]+'.json'))  
+                os.remove(org_js)
         else:
+            shutil.copy(org, os.path.join(left_dir, im_name))
             if os.path.exists(org_js):
                 shutil.copy(org_js, os.path.join(left_dir, im_name.split('.')[0]+'.json'))  
-            shutil.copy(org, os.path.join(left_dir, im_name))
+                os.remove(org_js)
         os.remove(org)
-        os.remove(org_js)
         roi_left = main_fun(js_dir, left_dir, flag='left', roi_vis_path=False, train_dir=train_dir)
         roi_right = main_fun(js_dir, right_dir, flag='right', roi_vis_path=False, train_dir=train_dir)
         # 如果有label-json, 则做img+json的切割
