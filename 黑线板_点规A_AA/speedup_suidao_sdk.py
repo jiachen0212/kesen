@@ -348,13 +348,11 @@ if __name__ == "__main__":
             diangui_index.append(defects.index(def_))
         except:
             continue
-    # 2. 和defcet_dict的keys一一对应
-    ng_nums = [0] * len(defects)
-    # 3.置信度分数[list]: 可针对各个子缺陷设置不同的置信度阈值
+    # 2.置信度分数[list]: 可针对各个子缺陷设置不同的置信度阈值
     Confidence = [0.5] * len(defects)
-    # 4.面积过滤阈值[list]: 像素个数小于num_thres=10的不检出, 可针对各个子缺陷设置不同的面积阈值
+    # 3.面积过滤阈值[list]: 像素个数小于num_thres=10的不检出, 可针对各个子缺陷设置不同的面积阈值
     num_thres = [10] * len(defects)
-    # 5. 点状缺陷至少满足面积>=0.02/0.025. [没有cover-heixain]
+    # 4. 点状缺陷至少满足面积>=0.02/0.025. [没有cover-heixain]
     for iid in diangui_index:
         num_thres[iid] = 0.02/0.025
 
