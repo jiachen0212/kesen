@@ -63,7 +63,6 @@ def roicut_test_tune_data(dir_, left_dir, right_dir, split_target, js_dir=None, 
         json.dump(roi_right, fp,ensure_ascii=False,indent = 4)
     
 
-
 def json_label_check(js_path, defects, defcet_nums):
     try:
         data = json.load(open(js_path, 'r'))
@@ -102,7 +101,7 @@ if __name__ == '__main__':
     # flag3 本地导入onnx, 并做批量数据test.
         # 测试结果存为.jpg落盘
 
-    flag = 1
+    flag = 3
 
     guang_type = 'suidao'  
     if guang_type in ['suidao']:
