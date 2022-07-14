@@ -244,9 +244,8 @@ def roi_cut_imgtest(img_path, roi, split_target, cuted_dir):
 def merge(H_full, W_full, name, sub_imgs_dir, roi, split_target, h_, w_):
 
     full_img = np.zeros((h_*split_target[1], w_*split_target[0], 3))
-    roi_w, roi_h = W_full, H_full
-    roi3 = min(roi[1] + roi_w, roi[3])
-    roi2 = min(roi[0] + roi_h, roi[2])
+    roi2 = min(roi[0] + w_*split_target[0], roi[2])
+    roi3 = min(roi[1] + h_*split_target[1], roi[3])
 
     full_ = np.zeros((W_full, H_full, 3))
     for i in range(split_target[0]):
@@ -307,6 +306,7 @@ def sdk_fun(onnx_path, img_full_path, roi, res_dir):
     # start infernece 
     full_img = Image.open(img_full_path)
     H_full, W_full = full_img.size[:2]
+
     im_name = os.path.basename(img_full_path)
     name = im_name.split('.')[0]
     # cuted_dir = os.path.join(pre_dir_path, name, 'cuted')
@@ -317,7 +317,7 @@ def sdk_fun(onnx_path, img_full_path, roi, res_dir):
     mkdir(cuted_dir)
     mkdir(cuted_infer_dir)
     # 落盘sub_imgs, j_i是sub_bin的索引.sub_img的检出box的坐标信息需换算至整图坐标,需要此索引信息.
-    h_, w_ = roi_cut_imgtest(img_full_path, roi, split_target, cuted_dir)
+    h_, w_ = roi_cut_imgtest(img_full_path, roi, split_target, cuted_dir)  
     
     # 子图进入模型的缩放系数
     scale_h, scale_w = h_ / size[1], w_ / size[0] 
