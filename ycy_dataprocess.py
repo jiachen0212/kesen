@@ -31,7 +31,7 @@ def roicut_test_tune_data(dir_, left_dir, right_dir, split_target, js_dir=None, 
     mkdir(left_dir)
     mkdir(right_dir)
     for im_name in im_names:
-        sps = im_name.split('-')
+        sps = im_name.split('_')
         assert len(sps) == 17
         assert sps[6] in ['1', '2']
         left_of_right = sps[6]
