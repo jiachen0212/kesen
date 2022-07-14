@@ -1,13 +1,8 @@
 # coding=utf-8
-
 '''
-tongzhou or suidao 的sdk脚本
+suidao 的sdk脚本
 '''
-
-from turtle import distance
 import warnings
-
-from matplotlib.transforms import Bbox
 warnings.filterwarnings("ignore")
 import cv2
 import numpy as np
@@ -55,10 +50,10 @@ def check_connect_comp(img, label_index):
 
 def find_farthest_two_points(points, metric="euclidean"):
     """
-    找出点集中最远距离的两个点：凸包 + 距离计算
+    找出点集中最远距离的两个点: 凸包 + 距离计算
     Args:
         points (numpy.ndarray, N x dim): N个d维向量
-        metric ("euclidean", optional): 距离度量方式，见scipy.spatial.distance.cdist
+        metric ("euclidean", optional): 距离度量方式, 见scipy.spatial.distance.cdist
     Returns:
         np.ndarray: 两点坐标
     """
@@ -76,7 +71,6 @@ def heixianABC(defect_values, heixian_A, heixian_B, lengthB, distanceB, heixian_
     ABvalue_indexs = [ind for ind in range(heixian_len) if (defect_values[ind] <= heixian_B and defect_values[ind] >= heixian_A)]
     # 这些ABvalue_lower_lengthB要做距离聚类, 聚类后条数<heixian_B_num就舍弃不检出
     ABvalue_lower_lengthB = [ind for ind in ABvalue_indexs if boxes[ind][3]-boxes[ind][1] <= lengthB]
-
     for i in range(len(ABvalue_lower_lengthB)):
         bins = []
         for j in range(i, ABvalue_lower_lengthB):
@@ -92,44 +86,94 @@ def heixianABC(defect_values, heixian_A, heixian_B, lengthB, distanceB, heixian_
     return pop_ind
 
 
-def diangui(diangui_area_distance, boxes, areas):
-    defect_nums = len(boxes)
-    area_0_2, area_0_1, dis50 = diangui_area_distance[:3]
-    num1, num2 = diangui_area_distance[3:]
-    # 1.面积小于0.1的都可直接放过
-    pop_ind = [ind for ind in range(defect_nums) if areas[ind] <= area_0_1]
-    # 2. 面积在[0.1~0.2]间,做聚类, 数量少于3则放掉
-    area_1_2 = [ind for ind in range(defect_nums) if (areas[ind] <= area_0_2 and areas[ind] >= area_0_1)]
-    if len(area_1_2) <= num1:
-        pop_ind.extend(area_1_2)
-    for i in range(len(area_1_2)):
-        bins = []
-        for j in range(i, len(area_1_2)):
-            p1, p2  = boxes[area_1_2[i]], boxes[area_1_2[j]]
-            distance_i_j = np.sqrt((p1[0]-p2[0])**2 + (p1[1]-p2[1])**2)
-            if distance_i_j <= dis50:
-                bins.append(area_1_2[j])
-        if len(bins) <= num1:
-            pop_ind.extend(bins)
-    # 3. 面积大于0.2做聚类,数量<=1则放掉.
-    area_upper_2 = [ind for ind in range(defect_nums) if areas[ind] >= area_0_2]
-    if len(area_upper_2) <= num2:
-        pop_ind.extend(area_upper_2)
-    for i in range(len(area_upper_2)):
-        bins = []
-        for j in range(i, len(area_upper_2)):
-            p1, p2  = boxes[area_upper_2[i]], boxes[area_upper_2[j]]
-            distance_i_j = np.sqrt((p1[0]-p2[0])**2 + (p1[1]-p2[1])**2)
-            if distance_i_j <= dis50:
-                bins.append(area_upper_2[j])
-        if len(bins) <= num2:
-            pop_ind.extend(bins)
+def diangui_help(defect_nums, area_large, area2_med, area_small, num_large, num_small, dis50, boxes, areas):
+    # 1.面积小于area_small的都可直接放过
+    pop_ind = [ind for ind in range(defect_nums) if areas[ind] <= area_small]
+    # 2. 面积在[area_s, area_l]间做聚类, 数量<=num_放掉
+    for k in range(2):
+        if k == 0:
+            area_l, arae_s, num_ = area2_med, area_small, num_large
+            area_between = [ind for ind in range(defect_nums) if (areas[ind] <= area_l and areas[ind] > arae_s)]
+        else:
+            area_l, arae_s, num_ = area_large, area2_med, num_small
+            area_between = [ind for ind in range(defect_nums) if (areas[ind] < area_l and areas[ind] > arae_s)]
+        if len(area_between) <= num_:
+            pop_ind.extend(area_between)
+        for i in range(len(area_between)):
+            bins = []
+            for j in range(i, len(area_between)):
+                p1, p2  = boxes[area_between[i]], boxes[area_between[j]]
+                distance_i_j = np.sqrt((p1[0]-p2[0])**2 + (p1[1]-p2[1])**2)
+                if distance_i_j <= dis50:
+                    bins.append(area_between[j])
+            if len(bins) <= num_:
+                pop_ind.extend(bins)
     pop_ind = list(set(pop_ind))
 
     return pop_ind
 
 
-def sdk_post(heixianban_index, diangui_index, diangui_area_distance, input_img, defect_list, onnx_predict, predict, heixianban, scale_h, Confidence=None, num_thres=None):
+def diangui(diangui_area_distance, boxes, areas, mask_sum, img_mask):
+    # diangui_area_distance: [0.3/scalew*h, 0.2/scalew*h, 0.1/scalew*h, 0.08/scalew*h, 0.05/scalew*h, 50/scalew*h, 3, 1, 1]
+    defect_nums = len(boxes)
+    if not mask_sum:
+        # 不存在AA面区域, 3个面积阈值直接取前三个
+        area_large, area_med, area_small, dis50 = diangui_area_distance[:3] + [diangui_area_distance[5]]
+        num_large, num_small = diangui_area_distance[5:7]
+        pop_ind = diangui_help(defect_nums, area_large, area_med, area_small, num_large, num_small, dis50, boxes, areas)
+
+        return pop_ind
+    else:
+        # 子图内存在AA面区域, 则AA, A的点规规则均需考虑
+        area_0_3, area_0_2, area_0_1, area_0_0_8, area_0_0_5, dis50 = diangui_area_distance[:6]
+        numa3, numa1, numaa1 = diangui_area_distance[6:]
+        # 1. 先用A面的标准把过杀滤除, 
+        pop_ind_temp = diangui_help(defect_nums, area_0_3, area_0_2, area_0_1, numa3, numa1, dis50, boxes, areas)
+        # 2. 再从pop_ind_temp里找到AA面内(box的中心点和img_mask比较)的box, 用AA规则过一遍这些box看是否需要被检出.
+        # 注意, pop_ind_temp均满足A规则下被放过, 故当ind_temp被AA的规则剔除, A规则的聚类bins个数变少, bins内的元素更是需要被剔除的, 不冲突.
+        if len(pop_ind_temp):
+            AA_inds = []
+            for ind_temp in pop_ind_temp:
+                box_ = boxes[ind_temp]
+                center_ = (box_[0]+box_[2])//2, (box_[1]+box_[3])//2
+                # 注意center_[1][0]
+                if img_mask[center_[1]][center_[0]][0]:  # [0 0 0] or [255 255 255]
+                    AA_inds.append(ind_temp)
+            if len(AA_inds):
+                # 以下计算AA规则下, 需要被过滤掉的所有aa_pop_inds
+                aa_pop_inds = [ind for ind in AA_inds if areas[ind] <= area_0_0_5]
+                # 2. 面积在[area_s, area_l]间做聚类, 数量<=num_放掉
+                for k in range(2):
+                    if k == 0:
+                        area_l, arae_s, num_ = area_0_0_8, area_0_0_5, numaa1
+                        area_between = [ind for ind in AA_inds if (areas[ind] <= area_l and areas[ind] > arae_s)]
+                    else:
+                        area_l, arae_s, num_ = area_0_1, area_0_0_8, numaa1
+                        area_between = [ind for ind in AA_inds if (areas[ind] < area_l and areas[ind] > arae_s)]
+                    if len(area_between) <= num_:
+                        aa_pop_inds.extend(area_between)
+                    for i in range(len(area_between)):
+                        bins = []
+                        for j in range(i, len(area_between)):
+                            p1, p2  = boxes[area_between[i]], boxes[area_between[j]]
+                            distance_i_j = np.sqrt((p1[0]-p2[0])**2 + (p1[1]-p2[1])**2)
+                            if distance_i_j <= dis50:
+                                bins.append(area_between[j])
+                        if len(bins) <= num_:
+                            aa_pop_inds.extend(bins)
+                aa_pop_inds = list(set(aa_pop_inds))
+                if len(aa_pop_inds):
+                    for tmp in AA_inds:
+                        if tmp not in aa_pop_inds:
+                            # tmp需要被检出
+                            pop_ind_temp.remove(tmp)
+
+        return pop_ind_temp  
+
+
+def sdk_post(heixianban_index, diangui_index, diangui_area_distance, input_img, img_mask, defect_list, onnx_predict, predict, heixianban, scale_h, Confidence=None, num_thres=None):
+    # 计算一下img_mask的像素和:mask纯黑sum=0,则不存在AA面,就不需要出发AA的判断
+    mask_sum = np.sum(img_mask)
     predict_result = dict()  
     num_class = predict.shape[1]
     map_ = np.argmax(onnx_predict[0], axis=1)
@@ -199,15 +243,15 @@ def sdk_post(heixianban_index, diangui_index, diangui_area_distance, input_img, 
                     boxes_.append(boxes[ind])
                     areas_.append(areas[ind])
             predict_result[defect_list[cls]] = [scores_, boxes_, areas_]
-            print(all_pop, 'heixianban')
+            print('heixianban poped: {}'.format(all_pop))
         
-        # 2. 2022.07.13, 只针对A面做点规过滤. [后续AA面的定位将补上,AA面规则可复制A面规则.]
+        # 2. 根据点规规则, 过滤一些点状过杀.
         if cls in diangui_index:
             scores = predict_result[defect_list[cls]][0]
             boxes = predict_result[defect_list[cls]][1]
             areas = predict_result[defect_list[cls]][2]
-            # 点规规则: diangui_area_distance： [0.2/scalew*h, 0.1/scalew*h, 50/scalew*h, 3, 1]
-            all_pop = diangui(diangui_area_distance, boxes, areas)
+            # 点规规则: diangui_area_distance： [0.3/scalew*h, 0.2/scalew*h, 0.1/scalew*h, 0.08/scalew*h, 0.05/scalew*h, 50/scalew*h, 3, 1, 1]
+            all_pop = diangui(diangui_area_distance, boxes, areas, mask_sum, img_mask)
             scores_, boxes_, areas_ = [], [], []
             for ind in range(len(boxes)):
                 if ind not in all_pop:
@@ -215,25 +259,36 @@ def sdk_post(heixianban_index, diangui_index, diangui_area_distance, input_img, 
                     boxes_.append(boxes[ind])
                     areas_.append(areas[ind])
             predict_result[defect_list[cls]] = [scores_, boxes_, areas_]
-            print(all_pop, 'diangui')
+            print('diangui poped: {}'.format(all_pop))
         
     return temo_predict, predict_result
     
 
-def roi_cut_imgtest(img_path, roi, split_target, cuted_dir):
-    basename = os.path.basename(img_path)
+def roi_cut_imgtest(img_path, roi, split_target, cuted_dir, mask=False):
+    pre, basename = os.path.dirname(img_path), os.path.basename(img_path)
     name = basename.split('.')[0]
     img = Image.open(img_path)
     img = np.asarray(img)
     img_roied = img[roi[1]:roi[3], roi[0]:roi[2]]
     h, w = img_roied.shape[:2]
     sub_h, sub_w = h//split_target[1], w//split_target[0]
+    if mask:
+        # 需要切割apple_logo_mask.jpg
+        mask_img = Image.open(os.path.join(pre, name+'_apple_logo_mask.jpg'))
+        mask_img = np.asarray(mask_img)
+        mask_img = mask_img[roi[1]:roi[3], roi[0]:roi[2]]
     for i in range(split_target[0]):
         for j in range(split_target[1]):
             sub_img = img_roied[sub_h*j: sub_h*(j+1), sub_w*i: sub_w*(i+1)]
             sub_name = name.split('.')[0]+'_{}_{}.bmp'.format(j, i)
             sub_img_bgr = cv2.cvtColor(sub_img, cv2.COLOR_RGB2BGR)
             cv2.imwrite(os.path.join(cuted_dir, sub_name), sub_img_bgr)
+            if mask:
+                sub_mask_img = mask_img[sub_h*j: sub_h*(j+1), sub_w*i: sub_w*(i+1)]
+                # mask的子图和原图的子图, 用后缀bmp和jpg区分
+                sub_name = name.split('.')[0]+'_{}_{}.jpg'.format(j, i)
+                sub_mask_img = cv2.cvtColor(sub_mask_img, cv2.COLOR_RGB2BGR)
+                cv2.imwrite(os.path.join(cuted_dir, sub_name), sub_mask_img)
 
     return sub_h, sub_w
 
@@ -259,8 +314,9 @@ if __name__ == "__main__":
 
     # diangui规则适用的缺陷
     diangui_defects = ['huashang', 'zangwu', 'heidian', 'fushidian', 'zhenkong', 'madian', 'aokeng', 'kailie', 'keli', 'fenchen', 'maoxian', 'xianwei', 'suoshui', 'baidian', 'lianghen']
-    # A面面积阈值: 0.1,0.2. 一个像素按照0.025mm算整除方便. 
-    diangui_area_distance = [0.2/0.025, 0.1/0.025, 50/0.025]
+    # A面area阈值: 0.1,0.2, AA面area阈值: 0.05, 0.08. 单个像素按照0.025mm算整除方便. 
+    diangui_area_distance = [0.3/0.025, 0.2/0.025, 0.1/0.025, 0.08/0.025, 0.05/0.025, 50/0.025]
+    apple_logo_mask = True
     
     guang_type = 'suidao'
     onnx_name = 'station3_20220626_suidao_2000iter.onnx'
@@ -296,9 +352,9 @@ if __name__ == "__main__":
     ng_nums = [0] * len(defects)
     # 3.置信度分数[list]: 可针对各个子缺陷设置不同的置信度阈值
     Confidence = [0.5] * len(defects)
-    # 4.面积过滤阈值[list]: 像素个数小于num_thres的不检出, 可针对各个子缺陷设置不同的面积阈值
+    # 4.面积过滤阈值[list]: 像素个数小于num_thres=10的不检出, 可针对各个子缺陷设置不同的面积阈值
     num_thres = [10] * len(defects)
-    # 5. 点状缺陷至少满足面积>=0.02/0.025. 
+    # 5. 点状缺陷至少满足面积>=0.02/0.025. [没有cover-heixain]
     for iid in diangui_index:
         num_thres[iid] = 0.02/0.025
 
@@ -336,7 +392,7 @@ if __name__ == "__main__":
             mkdir(cuted_dir)
             mkdir(cuted_infer_dir)
         # 落盘sub_imgs, j_i是sub_bin的索引.sub_img的检出box的坐标信息需换算至整图坐标,需要此索引信息.
-        h_, w_ = roi_cut_imgtest(left_or_right_img, roi, split_target, cuted_dir)
+        h_, w_ = roi_cut_imgtest(left_or_right_img, roi, split_target, cuted_dir, mask=apple_logo_mask)
         
         # 子图进入模型的缩放系数
         scale_h, scale_w = h_ / size[1], w_ / size[0] 
@@ -344,30 +400,36 @@ if __name__ == "__main__":
 
         # 面积距离都/(scale_h*scale_w), 点规间的距离用bbox的左上角点间的距离计算.
         diangui_area_distance = [a / (scale_h*scale_w) for a in diangui_area_distance]
-        # 面积[0.1,0.2]间的<=3放过, 面积大于0.2的<=1放过
-        diangui_area_distance += [3, 1]
+        # 面积[0.1,0.2]间的<=3放过, 面积大于[0.2,0.3]的<=1放过. [0.05,0.1]的<=1放过.
+        diangui_area_distance += [3, 1, 1]
+        
 
         # inference单张子图
         for i in range(split_target[0]):
             for j in range(split_target[1]):
                 Name = name.split('.')[0]+'_{}_{}.bmp'.format(j,i)
-                print("img: {}".format(Name), end="")
+                print("img: {}, ".format(Name), end="")
                 img_name = os.path.join(cuted_dir, Name)
                 img_base = Image.open(img_name) 
                 img_base = np.asarray(img_base)
+                # 读取子图对应的mask图
+                img_base_mask = Image.open(img_name.split('.')[0]+'.jpg') 
+                img_base_mask = np.asarray(img_base_mask)
                 # sub_img_inference, scale sub_img
                 img = cv2.resize(img_base, (size[0], size[1]))
+                img_mask = cv2.resize(img_base_mask, (size[0], size[1]))
                 img_ = sdk_pre(img, mean_, std_)
                 onnx_inputs = {onnx_session.get_inputs()[0].name: img_.astype(np.float32)}
                 onnx_predict = onnx_session.run(None, onnx_inputs)
                 predict = softmax(onnx_predict[0], 1)
-                map_, predict_result = sdk_post(heixianban_index, diangui_index, diangui_area_distance, img, defects, onnx_predict, predict, heixianban, scale_h, Confidence=Confidence, num_thres=num_thres)
-                scores, boxes, areas = [],[],[]
+                map_, predict_result = sdk_post(heixianban_index, diangui_index, diangui_area_distance, img, img_mask, defects, onnx_predict, predict, heixianban, scale_h, Confidence=Confidence, num_thres=num_thres)
+                scores, boxes, areas, clsses = [],[],[],[]
                 for k, v in predict_result.items():
                     if len(v[0]):
                         scores.extend(v[0])
                         boxes.extend(v[1])
                         areas.extend(v[2])
+                        clsses.extend([k]*len(v[0]))
                 mask_vis = label2colormap(map_)
                 # 绘制矩形框
                 if len(scores):
@@ -375,7 +437,7 @@ if __name__ == "__main__":
                         cv2.rectangle(mask_vis, (box[0], box[1]), (box[2], box[3]), (0, 255, 0), 1)
                         box = [box[:2], box[2:]]
                         box1 = [[int(scale_w*a[0])+w_*i+roi[0], int(scale_h*a[1])+h_*j+roi[1]] for a in box] 
-                        text = '{}, '.format(np.round(scores[ind], 2))
+                        text = '{}: {}, '.format(clsses[ind], np.round(scores[ind], 2))
                         text += ''.join(str(a)+',' for a in box1)
                         text += '{}'.format(int(areas[ind]*scale_w*scale_h))
                         cv2.putText(mask_vis, text, box[0], cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 2)
