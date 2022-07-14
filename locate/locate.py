@@ -1,7 +1,11 @@
 
 import json
 import os
+from re import L
 import sys
+from turtle import left
+
+from torch import zeros
 import cv2
 import json
 import numpy as np
@@ -76,6 +80,15 @@ def cv_imwrite(image, dst):
     cv2.imencode(ext=postfix, img=image)[1].tofile(dst)
 
 
+def apple_circle(zero_mask, center, r):
+    # 只在圆心+-r范围内判断点和圆的相对位置关系
+    left_up = [int(center[0]-r), int(center[1]-r)]
+    right_bottom = [int(center[0]+r), int(center[1]+r)]
+    right = min(right_bottom[0]+1, zero_mask.shape[1])
+    for i in range(left_up[0], right):
+        for j in range(left_up[1], right_bottom[1]+1):
+                if (i-center[0])**2 + (j-center[1])**2  <= r**2:
+                    zero_mask[j][i] = 255
 
 def mkdir(save_dir):
     if not os.path.exists(save_dir):
@@ -101,7 +114,6 @@ def main_fun(js_dir, test_path, train_dir=None, flag=None, roi_vis_path=None):
     # with open(os.path.join(train_dir, "apple.json"), "w") as f:
     #     json.dump(train_info, f, indent=4)
 
-
     # inference 
     if flag == 'left':
         with open(os.path.join(js_dir, "left.json")) as f:
@@ -121,7 +133,6 @@ def main_fun(js_dir, test_path, train_dir=None, flag=None, roi_vis_path=None):
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             inference_info = inference(img, train_info, verbose='False')
             _, p2 = inference_info['area_points'][0], inference_info['area_points'][2]
-
             # cv2.circle(img, (int(p2[0]), int(p2[1])), 10, (0, 255, 0), 20)
             # cv2.imwrite('./3.jpg', img)
             print(p2)
@@ -130,12 +141,14 @@ def main_fun(js_dir, test_path, train_dir=None, flag=None, roi_vis_path=None):
             temp_point1 = [4497, 9997]
             r1 = np.sqrt((temp_point1[0]-p2[0])**2 + (temp_point1[1]-p2[1])**2)
             print(r, r1)
-            points = [p2] + [temp_point] + [temp_point1]
-            cv2.circle(img, (int(p2[0]), int(p2[1])), int(r), (255, 255, 255), 20)
-            cv2.circle(img, (int(p2[0]), int(p2[1])), int(r1), (255, 255, 255), 20)
-            cv2.imwrite('./3.jpg', img)
+            # points = [p2] + [temp_point] + [temp_point1]
+            # cv2.circle(img, (int(p2[0]), int(p2[1])), int(r), (255, 255, 255), 20)
+            # cv2.circle(img, (int(p2[0]), int(p2[1])), int(r1), (255, 255, 255), 20)
+            # cv2.imwrite('./3.jpg', img)
+            zero_mask = np.zeros_like(img)
+            apple_circle(zero_mask, p2, r1)
 
-            return 
+            return zero_mask
 
     ttemp = os.path.join(train_dir, "template_{}.bmp".format(flag))
     roi = cv2.imread(ttemp, 0)
@@ -158,7 +171,6 @@ def main_fun(js_dir, test_path, train_dir=None, flag=None, roi_vis_path=None):
             cv_imwrite(img, os.path.join(temp_path, cuted_dirfix+'.jpg'))
 
     return img_roi
-
 
     # image = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
     # # 剔除冗余, 把边上的黑色部分剔除, 只剩下干净的物料
@@ -205,6 +217,7 @@ if __name__ == '__main__':
     train_dir = r'D:\mac_air_backup\chenjia\Download\Smartmore\2022\DL\kesen\codes\locate\apple'
     test_path = r'D:\mac_air_backup\chenjia\Download\Smartmore\2022\DL\kesen\codes\locate\apple_test'
     roi_vis_path = r'D:\mac_air_backup\chenjia\Download\Smartmore\2022\DL\kesen\data\test_tune\vis_roi'
-    main_fun(js_dir, test_path, train_dir=train_dir, flag='apple_logo', roi_vis_path=None)
+    zero_mask = main_fun(js_dir, test_path, train_dir=train_dir, flag='apple_logo', roi_vis_path=None)
+    cv2.imwrite('./apple_logo_mask.jpg', zero_mask)
     
     
