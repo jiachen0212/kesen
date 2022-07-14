@@ -147,6 +147,7 @@ def main_fun(js_dir, test_path, train_dir=None, flag=None, roi_vis_path=None):
             # cv2.imwrite('./3.jpg', img)
             zero_mask = np.zeros_like(img)
             apple_circle(zero_mask, p2, r1)
+            cv2.imwrite('./{}_apple_logo_mask.jpg'.format(im_name.split('.')[0]), zero_mask)
 
             return zero_mask
 
@@ -202,7 +203,6 @@ def main_fun(js_dir, test_path, train_dir=None, flag=None, roi_vis_path=None):
     # temple = image[920:15491, 1560:7537]
     # cv2.imwrite('./apple_template.jpg', temple)
 
-
 if __name__ == '__main__':
     
     # 左右物料定位
@@ -218,6 +218,6 @@ if __name__ == '__main__':
     test_path = r'D:\mac_air_backup\chenjia\Download\Smartmore\2022\DL\kesen\codes\locate\apple_test'
     roi_vis_path = r'D:\mac_air_backup\chenjia\Download\Smartmore\2022\DL\kesen\data\test_tune\vis_roi'
     zero_mask = main_fun(js_dir, test_path, train_dir=train_dir, flag='apple_logo', roi_vis_path=None)
-    cv2.imwrite('./apple_logo_mask.jpg', zero_mask)
+    
     
     
