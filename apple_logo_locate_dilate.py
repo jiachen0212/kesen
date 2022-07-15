@@ -1,4 +1,6 @@
 # coding=utf-8
+# dst_Otsu2 可以理解为就是我们想要的apple-logo外扩一点点的,AA区域.
+# 用 dst_Otsu2 or dst_Otsu4  都可.
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
@@ -12,12 +14,14 @@ otsuThe, maxValue = 0, 255  # otsuThe=46
 otsuThe, dst_Otsu = cv2.threshold(image, 1, maxValue, cv2.THRESH_OTSU)
 dst_Otsu = cv2.bitwise_not(dst_Otsu)
 
-# 检测出的apple-logo边上还是有点黑点, 所以先腐蚀再膨胀
-
+# 检测出的apple-logo边上还是有点黑点, so先腐蚀(去除黑点)再膨胀(外扩白像素.)
 kernel = np.ones((50, 50), dtype=np.uint8)
 dst_Otsu1 = cv2.erode(dst_Otsu, kernel, iterations=1)
 kernel = np.ones((30, 30), dtype=np.uint8)
 dst_Otsu2 = cv2.dilate(dst_Otsu1, kernel, 5)  
+dst_Otsu3 = cv2.dilate(dst_Otsu1, kernel, 6) 
+kernel_ = np.ones((40, 40), dtype=np.uint8)
+dst_Otsu4 = cv2.dilate(dst_Otsu1, kernel_, 5)  
 
 # plt.subplot(131) 
 # plt.xlabel('org')
@@ -30,7 +34,8 @@ dst_Otsu2 = cv2.dilate(dst_Otsu1, kernel, 5)
 # plt.imshow(dst_Otsu2)
 # plt.show()
 
-cv2.imwrite('./dst_Otsu.jpg', dst_Otsu2)
+cv2.imwrite(r'D:\mac_air_backup\chenjia\Download\Smartmore\2022\DL\kesen\codes\sdk_test\suidao\test_dir\1.jpg', dst_Otsu2)
+cv2.imwrite(r'D:\mac_air_backup\chenjia\Download\Smartmore\2022\DL\kesen\codes\sdk_test\suidao\test_dir\2.jpg', dst_Otsu4)
 
 # h, w = dst_Otsu.shape[:2]
 # for i in range(h):
@@ -40,6 +45,7 @@ org = np.sum(dst_Otsu)
 org_en = np.sum(dst_Otsu1)
 org_en_dil = np.sum(dst_Otsu2)
 print("org: {}, end: {}, end+dil: {}".format(org, org_en, org_en_dil))
+print(np.sum(dst_Otsu3), np.sum(dst_Otsu4))
 
 # 拟合外接圆
 # contours, _ = cv2.findContours(dst_Otsu2, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -49,8 +55,7 @@ print("org: {}, end: {}, end+dil: {}".format(org, org_en, org_en_dil))
 #     cv2.circle(image, (int(x), int(y)), int(radius), (0, 255, 0), 20)
 #     cv2.imwrite('./{}.jpg'.format(i), image)
 
-
-contours, _ = cv2.findContours(dst_Otsu2, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+contours, _ = cv2.findContours(dst_Otsu4, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 for i in range(len(contours)):
     cnt = contours[i]
     points = cnt.reshape(cnt.shape[0], -1)
