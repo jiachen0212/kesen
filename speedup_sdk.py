@@ -257,8 +257,6 @@ def merge(H_full, W_full, name, sub_imgs_dir, roi, split_target, h_, w_):
 
     return full_
 
-
-
 def sdk_fun(onnx_path, img_full_path, roi, res_dir):
 
     pre_dir_path = os.path.dirname(img_full_path)
@@ -311,8 +309,8 @@ def sdk_fun(onnx_path, img_full_path, roi, res_dir):
     name = im_name.split('.')[0]
     # cuted_dir = os.path.join(pre_dir_path, name, 'cuted')
     # cuted_infer_dir = os.path.join(pre_dir_path, name, 'cuted_res')
-    cuted_dir = os.path.join(r'C:\Users\15974\Desktop\1', name, 'cuted')
-    cuted_infer_dir = os.path.join(r'C:\Users\15974\Desktop\1', name, 'cuted_res')
+    cuted_dir = os.path.join(r'D:\kesen', name, 'cuted')
+    cuted_infer_dir = os.path.join(r'D:\kesen', name, 'cuted_res')
 
     mkdir(cuted_dir)
     mkdir(cuted_infer_dir)

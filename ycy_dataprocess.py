@@ -128,7 +128,7 @@ if __name__ == '__main__':
         defect_number(right_dir)
     
     elif flag == 3:
-        onnx_path = r'D:\mac_air_backup\chenjia\Download\Smartmore\2022\DL\kesen\codes\sdk_test\suidao\station3_20220626_suidao_2000iter.onnx'
+        onnx_path = r'D:\mac_air_backup\chenjia\Download\Smartmore\2022\DL\kesen\codes\sdk_test\suidao\suidao_0716_2000_tune_hc_gs.onnx'   # station3_20220626_suidao_2000iter.onnx'
         mkdir(res_dir)
         left_roi_jsdata = json.load(open(left_roi_js, 'r'))
         right_roi_jsdata = json.load(open(right_roi_js, 'r'))
