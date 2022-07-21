@@ -163,6 +163,7 @@ def main_fun(js_dir, test_path, train_dir=None, flag=None, roi_vis_path=None):
         p1, p2 = inference_info['area_points'][0], inference_info['area_points'][2]
         roi = p1 + p2
         img_roi[im_name] = roi
+        print(roi)
 
         if roi_vis_path:
             cv2.rectangle(img, p1, p2, (255, 255, 255), 10, 8)
@@ -206,18 +207,18 @@ def main_fun(js_dir, test_path, train_dir=None, flag=None, roi_vis_path=None):
 if __name__ == '__main__':
     
     # 左右物料定位
-    # js_dir = r'D:\mac_air_backup\chenjia\Download\Smartmore\2022\DL\kesen\codes\locate'
-    # train_dir = r'D:\mac_air_backup\chenjia\Download\Smartmore\2022\DL\kesen\codes\locate\train_dir'
-    # test_path = r'D:\mac_air_backup\chenjia\Download\Smartmore\2022\DL\kesen\data\test_tune\腐蚀点模型测试数据\left'
-    # roi_vis_path = r'D:\mac_air_backup\chenjia\Download\Smartmore\2022\DL\kesen\data\test_tune\vis_roi'
-    # img_roi = main_fun(js_dir, test_path, train_dir=train_dir, flag='left', roi_vis_path=roi_vis_path)
-
-
-    js_dir = r'D:\mac_air_backup\chenjia\Download\Smartmore\2022\DL\kesen\codes\locate\apple'
-    train_dir = r'D:\mac_air_backup\chenjia\Download\Smartmore\2022\DL\kesen\codes\locate\apple'
-    test_path = r'D:\mac_air_backup\chenjia\Download\Smartmore\2022\DL\kesen\codes\locate\apple_test'
+    js_dir = r'D:\mac_air_backup\chenjia\Download\Smartmore\2022\DL\kesen\codes\locate'
+    train_dir = os.path.join(js_dir, 'train_dir')
+    test_path = r'D:\mac_air_backup\chenjia\Download\Smartmore\2022\DL\kesen\data\test_tune\腐蚀点模型测试数据\left'
     roi_vis_path = r'D:\mac_air_backup\chenjia\Download\Smartmore\2022\DL\kesen\data\test_tune\vis_roi'
-    zero_mask = main_fun(js_dir, test_path, train_dir=train_dir, flag='apple_logo', roi_vis_path=None)
+    img_roi = main_fun(js_dir, test_path, train_dir=train_dir, flag='left', roi_vis_path=roi_vis_path)
+
+
+    # js_dir = r'D:\mac_air_backup\chenjia\Download\Smartmore\2022\DL\kesen\codes\locate\apple'
+    # train_dir = r'D:\mac_air_backup\chenjia\Download\Smartmore\2022\DL\kesen\codes\locate\apple'
+    # test_path = r'D:\mac_air_backup\chenjia\Download\Smartmore\2022\DL\kesen\codes\locate\apple_test'
+    # roi_vis_path = r'D:\mac_air_backup\chenjia\Download\Smartmore\2022\DL\kesen\data\test_tune\vis_roi'
+    # zero_mask = main_fun(js_dir, test_path, train_dir=train_dir, flag='apple_logo', roi_vis_path=None)
     
     
     
