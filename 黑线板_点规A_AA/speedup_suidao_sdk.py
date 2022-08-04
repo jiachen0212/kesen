@@ -315,7 +315,7 @@ if __name__ == "__main__":
     # diangui规则适用的缺陷
     diangui_defects = ['huashang', 'zangwu', 'heidian', 'fushidian', 'zhenkong', 'madian', 'aokeng', 'kailie', 'keli', 'fenchen', 'maoxian', 'xianwei', 'suoshui', 'baidian', 'lianghen']
     # A面area阈值: 0.1,0.2, AA面area阈值: 0.05, 0.08. 单个像素按照0.025mm算整除方便. 
-    diangui_area_distance = [0.3/0.025, 0.2/0.025, 0.1/0.025, 0.08/0.025, 0.05/0.025, 50/0.025]
+    diangui_area_distance = [(np.sqrt(0.3)/0.025)**2, (np.sqrt(0.2)/0.025)**2, (np.sqrt(0.1)/0.025)**2, (np.sqrt(0.08)/0.025)**2, (np.sqrt(0.05)/0.025)**2, 50/0.025]
     apple_logo_mask = True
     
     guang_type = 'suidao'
