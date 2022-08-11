@@ -84,21 +84,23 @@ if __name__ == "__main__":
         c, d = localize_one_edge(sd2_image, find_in_vertical=False, thre=None, expend=200)
         print(a, b, c, d)
         # c是物料的左边界, 隧道左子图的孔相对左边界距离是固定的(除非相机的分辨率变了.). 这里固定+100就ok
-        c += 1000
+        c += 3000
         # a是物料上边界, 固定+1000充分剔除冗余且不至于影响apple-logo;
         # b是物料下边界, 固定-1000充分剔除冗余且不至于影响apple-logo;
-        a += 1000
-        b -= 1000
+        a += 8000
+        b -= 8000
         wuliao_tz = sd2_image[a:b, c:d]
         cv2.imwrite('./wuliao_tz.jpg', wuliao_tz)
         otsuThe, maxValue = 0, 255  # otsuThe=46
         otsuThe, dst_Otsu = cv2.threshold(wuliao_tz, otsuThe+20, maxValue, cv2.THRESH_OTSU)
         dst_Otsu = cv2.bitwise_not(dst_Otsu)
         # 检测出的apple-logo边上还是有点黑点, so先腐蚀(去除黑点)再膨胀(外扩白像素.)
-        kernel = np.ones((50, 50), dtype=np.uint8)
-        dst_Otsu1 = cv2.erode(dst_Otsu, kernel, iterations=1)
-        kernel = np.ones((30, 30), dtype=np.uint8)
-        dst_Otsu2 = cv2.dilate(dst_Otsu1, kernel, 5)  
+        # kernel = np.ones((30, 30), dtype=np.uint8)
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(20,20))
+        dst_Otsu1 = cv2.erode(dst_Otsu, kernel, iterations=5)
+        # kernel = np.ones((50, 50), dtype=np.uint8)
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(50,50))
+        dst_Otsu2 = cv2.dilate(dst_Otsu1, kernel, iterations=5)  
         # 把abcd添加回去, 得到和原图一样size的apple-mask
         full_mask = np.zeros_like(sd2_image)
         full_mask[a:b, c:d] = dst_Otsu2
