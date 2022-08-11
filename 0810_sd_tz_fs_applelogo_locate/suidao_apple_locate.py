@@ -99,10 +99,10 @@ if __name__ == "__main__":
         # 检测出的apple-logo边上还是有点黑点, so先腐蚀(去除黑点)再膨胀(外扩白像素.)
         # kernel = np.ones((30, 30), dtype=np.uint8)
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(30,30))
-        dst_Otsu1 = cv2.erode(dst_Otsu, kernel, iterations=5)
+        dst_Otsu1 = cv2.erode(dst_Otsu, kernel, iterations=1)
         # kernel = np.ones((50, 50), dtype=np.uint8)
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(50,50))
-        dst_Otsu2 = cv2.dilate(dst_Otsu1, kernel, iterations=5)  
+        dst_Otsu2 = cv2.dilate(dst_Otsu1, kernel, iterations=2)  
         # 把abcd添加回去, 得到和原图一样size的apple-mask
         full_mask = np.zeros_like(sd2_image)
         full_mask[a:b, c:d] = dst_Otsu2
