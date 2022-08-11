@@ -43,12 +43,12 @@ def localize_one_edge(source_image, find_in_vertical=True, thre=None, expend=200
 
 if __name__ == "__main__":
 
-    flag = 0 # 左半图
+    flag = 1 # 左半图
     # flag = 0  # 右半图
 
     if flag == 0:
         # 隧道的右半张子图  [apple-logo少的那半张]
-        sd2_image = cv2.imread(r'D:\work\project\DL\kesen\data\sd.bmp')
+        sd2_image = cv2.imread(r'D:\work\project\DL\kesen\data\19-2-8.bmp')
         sd2_image = cv2.cvtColor(sd2_image, cv2.COLOR_BGR2RGB) 
         sd2_image = cv2.cvtColor(sd2_image, cv2.COLOR_RGB2GRAY)  
         a, b = localize_one_edge(sd2_image, find_in_vertical=True, thre=None, expend=200)
@@ -83,15 +83,16 @@ if __name__ == "__main__":
         a, b = localize_one_edge(sd2_image, find_in_vertical=True, thre=None, expend=200)
         c, d = localize_one_edge(sd2_image, find_in_vertical=False, thre=None, expend=200)
         print(a, b, c, d)
-        # c是物料的左边界, 隧道左子图的孔相对左边界距离是固定的(除非相机的分辨率变了.). 这里固定-100就ok
-        c -= 1000
+        # c是物料的左边界, 隧道左子图的孔相对左边界距离是固定的(除非相机的分辨率变了.). 这里固定+100就ok
+        c += 1000
         # a是物料上边界, 固定+1000充分剔除冗余且不至于影响apple-logo;
         # b是物料下边界, 固定-1000充分剔除冗余且不至于影响apple-logo;
         a += 1000
         b -= 1000
         wuliao_tz = sd2_image[a:b, c:d]
+        cv2.imwrite('./wuliao_tz.jpg', wuliao_tz)
         otsuThe, maxValue = 0, 255  # otsuThe=46
-        otsuThe, dst_Otsu = cv2.threshold(wuliao_tz, 1, maxValue, cv2.THRESH_OTSU)
+        otsuThe, dst_Otsu = cv2.threshold(wuliao_tz, otsuThe+20, maxValue, cv2.THRESH_OTSU)
         dst_Otsu = cv2.bitwise_not(dst_Otsu)
         # 检测出的apple-logo边上还是有点黑点, so先腐蚀(去除黑点)再膨胀(外扩白像素.)
         kernel = np.ones((50, 50), dtype=np.uint8)

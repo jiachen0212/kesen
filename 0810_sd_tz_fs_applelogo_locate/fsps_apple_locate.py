@@ -175,10 +175,7 @@ if __name__ == "__main__":
     # cv2.imwrite('./fs.jpg', image)
 
     image_path = './fs.jpg'
-    image_full = cv_imread_by_np(image_path)
-    print(image_full.shape)
-    image = cv2.cvtColor(image_full, cv2.COLOR_BGR2RGB) 
-    image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)  
+    image = cv_imread_by_np(image_path)
     a, b = localize_one_edge(image, find_in_vertical=True, thre=None, expend=200)
     c, d = localize_one_edge(image, find_in_vertical=False, thre=None, expend=200)
     print(a,b,c,d)
@@ -190,17 +187,15 @@ if __name__ == "__main__":
     # apple-logo相对有边界的巨鹿固定, 数值可写si
     d -= 3600
     image = image[a:b, c:d]
-    # cv2.imwrite('./fs_wuliao.jpg', image)
-    otsuThe, maxValue = 0, 255  # otsuThe=46
-    otsuThe, dst_Otsu = cv2.threshold(image, 1, maxValue, cv2.THRESH_OTSU)
-    dst_Otsu = cv2.bitwise_not(dst_Otsu)
-    # 检测出的apple-logo边上还是有点黑点, so先腐蚀(去除黑点)再膨胀(外扩白像素.)
-    kernel = np.ones((50, 50), dtype=np.uint8)
-    dst_Otsu1 = cv2.erode(dst_Otsu, kernel, iterations=1)
-    kernel = np.ones((30, 30), dtype=np.uint8)
-    dst_Otsu2 = cv2.dilate(dst_Otsu1, kernel, 5)  
-    full_mask = np.zeros_like(image_full)
-    full_mask[a:b, c:d] = dst_Otsu2
-    # 存apple-logo的mask图.
-    cv2.imwrite('./fs_mask.jpg', full_mask)
-    print(cv2.imread('./fs_mask.jpg').shape)
+    cv2.imwrite('./fs_wuliao.jpg', image)
+    # otsuThe, maxValue = 0, 255  # otsuThe=46
+    # otsuThe, dst_Otsu = cv2.threshold(image, 1, maxValue, cv2.THRESH_OTSU)
+    # dst_Otsu = cv2.bitwise_not(dst_Otsu)
+    # # 检测出的apple-logo边上还是有点黑点, so先腐蚀(去除黑点)再膨胀(外扩白像素.)
+    # kernel = np.ones((50, 50), dtype=np.uint8)
+    # dst_Otsu1 = cv2.erode(dst_Otsu, kernel, iterations=1)
+    # kernel = np.ones((30, 30), dtype=np.uint8)
+    # dst_Otsu2 = cv2.dilate(dst_Otsu1, kernel, 5)  
+
+    # # 存apple-logo的mask图.
+    # cv2.imwrite('./fs.jpg', dst_Otsu2)
