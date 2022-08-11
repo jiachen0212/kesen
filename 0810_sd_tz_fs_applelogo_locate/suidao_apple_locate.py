@@ -63,8 +63,7 @@ if __name__ == "__main__":
         wuliao_tz = sd2_image[a:b, c:d]
         cv2.imwrite('./wuliao_sd.jpg', wuliao_tz)
         otsuThe, maxValue = 0, 255  # otsuThe=46
-        otsuThe, dst_Otsu = cv2.threshold(wuliao_tz, otsuThe, maxValue, cv2.THRESH_OTSU)
-        _, dst_Otsu = cv2.threshold(wuliao_tz, otsuThe+20, maxValue, cv2.THRESH_OTSU)
+        _, dst_Otsu = cv2.threshold(wuliao_tz, otsuThe, maxValue, cv2.THRESH_OTSU)
         dst_Otsu = cv2.bitwise_not(dst_Otsu)
         # 检测出的apple-logo边上还是有点黑点, so先腐蚀(去除黑点)再膨胀(外扩白像素.)
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(30,30))
@@ -94,8 +93,7 @@ if __name__ == "__main__":
         wuliao_tz = sd2_image[a:b, c:d]
         cv2.imwrite('./wuliao_tz.jpg', wuliao_tz)
         otsuThe, maxValue = 0, 255  # otsuThe=63
-        otsuThe, dst_Otsu = cv2.threshold(wuliao_tz, otsuThe, maxValue, cv2.THRESH_OTSU)
-        _, dst_Otsu = cv2.threshold(wuliao_tz, otsuThe+20, maxValue, cv2.THRESH_OTSU)
+        _, dst_Otsu = cv2.threshold(wuliao_tz, otsuThe, maxValue, cv2.THRESH_OTSU)
         dst_Otsu = cv2.bitwise_not(dst_Otsu)
         # 检测出的apple-logo边上还是有点黑点, so先腐蚀(去除黑点)再膨胀(外扩白像素.)
         # kernel = np.ones((30, 30), dtype=np.uint8)
