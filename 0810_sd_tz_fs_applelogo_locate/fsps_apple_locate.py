@@ -8,6 +8,7 @@ Image.MAX_IMAGE_PIXELS = None
 from PIL import ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 from utils import cv_imread_by_np, cv_imwrite
+from fs_apple_logo_mask import PerspectiveTransform
 
 
 def localize_one_edge(source_image, find_in_vertical=True, thre=None, expend=200):
@@ -76,9 +77,7 @@ def get_masked_subimg(sub_image, mask_bright=True, tresh=100, expend=10,max_radi
         cv2.circle(max_mask, center, r, 0, -1)
         if len(sub_image.shape) == 3:
             max_mask = max_mask[:, :, None]
-        """
-            For 德成：用这个max_mask将mic空区域所有的缺陷都屏蔽（模型输出缺陷图，后处理之前进行掩除），不做输出。
-        """
+
         return max_mask * sub_image
     else:
         return sub_image
@@ -134,68 +133,72 @@ def localize_for_front_surface_mic_Bar(source_image, thre=None, expend=200):
     return left, top, right, bottom
 
 
-if __name__ == "__main__":
 
-    # kersen station 1 mic Coaxial
-    # dir_image = r"D:\BaiduNetdiskDownload\out_0805\1_position\2"
-    # dir_out = r"D:\BaiduNetdiskDownload\out_0805\1_position\2_mic_res"
-    # func = localize_for_front_surface_mic_Tunnel_Coaxial
-
-    # # kersen station 3 mic Bar
-    # dir_image = r"D:\BaiduNetdiskDownload\out_0805\3_position\1"
-    # dir_out = r"D:\BaiduNetdiskDownload\out_0805\3_position\1_mic_res"
-    # func = localize_for_front_surface_mic_Bar
-
-    # for root, dirs, files in os.walk(dir_image):
-    #     for file in files:
-
-    #         real_path = os.path.join(root, file)
-    #         source_image = cv_imread_by_np(real_path)
-
-    #         # timestamp_start = time.perf_counter()
-    #         left, top, right, bottom = func(source_image, expend=0)
-    #         # print(time.perf_counter() - timestamp_start)
-
-    #         print(left, top, right, bottom)
-
-    #         pt1 = (left, top)
-    #         pt2 = (right, bottom)
-    #         cv2.rectangle(source_image, pt1, pt2, (255, 255, 255), 5)
-    #         if not os.path.isdir(dir_out):
-    #             os.makedirs(dir_out)
-    #         expend = 100
-    #         source_image = source_image[top-expend:bottom+expend,left-expend:right+expend]
-    #         cv_imwrite(source_image, os.path.join(dir_out, file))
-    # print("DONE")
-
-    
-    # Fenshi
+def easy_roi(image_path):
+    image = np.asarray(Image.open(image_path))
+    # 1. roi扣取
     # image_path = r'D:\work\project\DL\kesen\data\fs.bmp'
-    # image = np.asarray(Image.open(image_path))
-    # cv2.imwrite('./fs.jpg', image)
-
-    image_path = './fs.jpg'
-    image = cv_imread_by_np(image_path)
     a, b = localize_one_edge(image, find_in_vertical=True, thre=None, expend=200)
     c, d = localize_one_edge(image, find_in_vertical=False, thre=None, expend=200)
     print(a,b,c,d)
-    # b是底部的泛光冗余, 相对位置固定(除非相机分辨率改变), 直接数值剔除
-    b -= 1500
-    # 左上都剔除一些冗余, 可固定写si
-    a += 1000
-    c += 1000
-    # apple-logo相对有边界的巨鹿固定, 数值可写si
-    d -= 3600
+    # abcd的加减值可微调, 无法固定.
+    b -= 9000
+    a += 7312
+    c += 3290
+    d -= 6460
+    # a += 7930
+    # b = a+2430
+    # c += 3290
+    # d -= 6460
     image = image[a:b, c:d]
-    cv2.imwrite('./fs_wuliao.jpg', image)
-    # otsuThe, maxValue = 0, 255  # otsuThe=46
-    # otsuThe, dst_Otsu = cv2.threshold(image, 1, maxValue, cv2.THRESH_OTSU)
-    # dst_Otsu = cv2.bitwise_not(dst_Otsu)
-    # # 检测出的apple-logo边上还是有点黑点, so先腐蚀(去除黑点)再膨胀(外扩白像素.)
-    # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(20,20))
-    # dst_Otsu1 = cv2.erode(dst_Otsu, kernel, iterations=1)
-    # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(50,50))
-    # dst_Otsu2 = cv2.dilate(dst_Otsu1, kernel, 5)  
+    cv2.imwrite(r'D:\work\project\beijing\Smartmore\2022\DL\kesen\codes\apple_logo_locate\fs_test_dir\fs_test1.jpg', image)  # fs_test.jpg, fs_test1.jpg
 
-    # # 存apple-logo的mask图.
-    # cv2.imwrite('./fs.jpg', dst_Otsu2)
+    return a,b,c,d
+
+
+    '''
+        image = cv2.imread('./fs_test.jpg') 
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) 
+        image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)  
+        otsuThe, maxValue = 0, 255
+        _, dst_Otsu = cv2.threshold(image, otsuThe, maxValue, cv2.THRESH_OTSU)
+        dst_Otsu = cv2.bitwise_not(dst_Otsu)
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(30,30))
+        dst_Otsu1 = cv2.erode(dst_Otsu, kernel, iterations=1)
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(50,50))
+        dst_Otsu2 = cv2.dilate(dst_Otsu1, kernel, iterations=2)  
+        res = cv2.addWeighted(image, 0.5, dst_Otsu2, 0.5, 0)
+        # 二值化+形态学处理的结果
+        cv2.imwrite('./fs_apple.jpg', res)
+
+        '''
+
+
+def get_fs_mask_img(test_dir, image_path, roi_list):
+    # 模板匹配: 基于1, 找到apple-logo的最小外接矩形
+    masked = PerspectiveTransform(test_dir)
+    image = np.asarray(Image.open(image_path)) 
+    print(image.shape)
+    full_mask = np.zeros_like(image)
+    full_mask[roi_list[0]:roi_list[1], roi_list[2]:roi_list[3]] = masked
+    print(full_mask.shape)
+    cv2.imwrite('./fsps_apple_mask.jpg', full_mask)
+    
+
+if __name__ == "__main__":
+    
+    import time
+    timestamp_start = time.perf_counter()
+    image_path = r'D:\work\project\beijing\Smartmore\2022\DL\kesen\codes\apple_logo_locate\fs_test.bmp'  
+    test_dir = r'D:\work\project\beijing\Smartmore\2022\DL\kesen\codes\apple_logo_locate\fs_test_dir'
+
+    # 1. 粗略扣除logo的roi
+    a,b,c,d = easy_roi(image_path)
+
+    # 2. 做模板匹配, 得到logo的最小外接矩形. 再基于最小外接矩形,把apple-logo全部mask
+    get_fs_mask_img(test_dir, image_path, [a,b,c,d])
+    print(time.perf_counter() - timestamp_start)
+
+
+
+
