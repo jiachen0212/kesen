@@ -229,7 +229,7 @@ def sdk_post(heixianban_index, diangui_index, diangui_area_distance, input_img, 
             boxes = predict_result[defect_list[cls]][1]
             areas = predict_result[defect_list[cls]][2]
             defect_values = predict_result[defect_list[cls]][3]
-            heixian_A, heixian_B, heixian_C = heixianban[0][:3]   
+            heixian_A, heixian_B, heixian_C = heixianban[0][:3]  # 70 107 210
             lengthB, lengthC = heixianban[1][0] / scale_h, heixianban[1][1] / scale_h
             distanceB, distanceC = heixianban[2][0] / scale_h, heixianban[2][1] / scale_h
             heixian_B_num, heixian_C_num = heixianban[3][:2]
@@ -310,7 +310,7 @@ def merge(H_full, W_full, name, sub_imgs_dir, roi, split_target, h_, w_):
 if __name__ == "__main__":
     
     # 黑线的index本应该是2的, 这里写成33,则不会触发黑线板规则.
-    heixianban_index = 33
+    heixianban_index = 2
 
     # diangui规则适用的缺陷
     diangui_defects = ['huashang', 'zangwu', 'heidian', 'fushidian', 'zhenkong', 'madian', 'aokeng', 'kailie', 'keli', 'fenchen', 'maoxian', 'xianwei', 'suoshui', 'baidian', 'lianghen']
@@ -323,9 +323,10 @@ if __name__ == "__main__":
 
     # 8K 0.027mm/pixel suidao光工位的像素分辨率, 后面会和黑线板的检出长度mm结合计算. 
     # heixian缺陷, ABC三个灰度值等级
-    heixian_A, heixian_B, heixian_C = 105, 109, 110
-    lengthB, lengthC = 5*0.027, 50*0.027
-    distanceB, distanceC = 10*0.027, 35*0.027
+    heixian_A, heixian_B, heixian_C = 70, 107, 210
+    # 计算长度, 距离在隧道成像下, 对应的像素点个数.
+    lengthB, lengthC = 5/0.027, 50/0.027
+    distanceB, distanceC = 10/0.027, 35/0.027
     heixian_B_num, heixian_C_num = 6, 3
     heixianban = [[heixian_A, heixian_B, heixian_C], [lengthB, lengthC], [distanceB, distanceC],[heixian_B_num, heixian_C_num]]
 
@@ -354,7 +355,7 @@ if __name__ == "__main__":
     num_thres = [10] * len(defects)
     # 4. 点状缺陷至少满足面积>=0.02/0.025. [没有cover-heixain]
     for iid in diangui_index:
-        num_thres[iid] = 0.02/0.025
+        num_thres[iid] = math.ceil((np.sqrt(0.02)/0.025)**2)
 
     # 物料left和物料right, 共测试两张.
     test_dir = os.path.join(root_path, guang_type, 'test_dir')
