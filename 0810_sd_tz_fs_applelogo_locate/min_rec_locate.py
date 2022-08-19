@@ -123,16 +123,18 @@ def main_fun(train_dir, test_dir=None, roi_vis_path=None, flag=None):
 def get_min_apple_pattern(test_path):
 
     train_dir = r'D:\work\project\beijing\Smartmore\2022\DL\kesen\codes\apple_logo_locate\fs_train_dir'
-    # test_path = r'D:\work\project\beijing\Smartmore\2022\DL\kesen\codes\apple_logo_locate\fs_test_dir'
-    # roi_vis_path = r'D:\work\project\beijing\Smartmore\2022\DL\kesen\codes\apple_logo_locate\vis_roi'
     
-    # 如需使算法更鲁棒, 可加一些train-image再运行此行
-    # train
-    main_fun(train_dir, flag='train')
+    # 如需使算法更鲁棒, 可加一些train-image再运行此行。 线上稳定的话, 可不开启本train过程
+    # main_fun(train_dir, flag='train')
 
     # test
+    import time
+    timestamp_start = time.perf_counter()
     img_roi = main_fun(train_dir, test_dir=test_path, roi_vis_path=None, flag='test')
-    print(img_roi)
+    print(time.perf_counter() - timestamp_start, '1')
+
+    
+
 
     return img_roi
 

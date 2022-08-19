@@ -66,11 +66,10 @@ def main1(test_dir):
     paths = [os.path.join(test_dir, a) for a in os.listdir(test_dir)]
     test_jiaodian = get_min_apple_pattern(test_dir)
     for cur_path in paths:
-        print(cur_path)
         base_name = os.path.basename(cur_path)
         test_points = test_jiaodian[base_name]
         image = cv2.imread(cur_path, 0)
-        draw = cv2.imread(cur_path)
+        draw = np.zeros_like(image)
         inference_points, inference_mask_points = inference1(image, points, mask_points, test_points)
         cv2.drawContours(draw, [inference_points.astype(np.int32)], 0, [0, 255, 0], 2)
         for ps in inference_mask_points:
@@ -81,9 +80,9 @@ def main1(test_dir):
         # cv2.destroyAllWindows()
         # cv2.imwrite(base_name, draw)
 
-        draw[draw!=255] = 0
+        # draw[draw!=255] = 0
 
-        return draw[:,:,0]
+        return draw 
 
 
 

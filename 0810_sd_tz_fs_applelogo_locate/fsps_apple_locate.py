@@ -140,7 +140,7 @@ def easy_roi(image_path):
     # image_path = r'D:\work\project\DL\kesen\data\fs.bmp'
     a, b = localize_one_edge(image, find_in_vertical=True, thre=None, expend=200)
     c, d = localize_one_edge(image, find_in_vertical=False, thre=None, expend=200)
-    print(a,b,c,d)
+    # print(a,b,c,d)
     # abcd的加减值可微调, 无法固定.
     b -= 9000
     a += 7312
@@ -151,7 +151,7 @@ def easy_roi(image_path):
     # c += 3290
     # d -= 6460
     image = image[a:b, c:d]
-    cv2.imwrite(r'D:\work\project\beijing\Smartmore\2022\DL\kesen\codes\apple_logo_locate\fs_test_dir\fs_test1.jpg', image)  # fs_test.jpg, fs_test1.jpg
+    # cv2.imwrite(r'D:\work\project\beijing\Smartmore\2022\DL\kesen\codes\apple_logo_locate\fs_test_dir\fs_test1.jpg', image)  # fs_test.jpg, fs_test1.jpg
 
     return a,b,c,d
 
@@ -176,28 +176,32 @@ def easy_roi(image_path):
 
 def get_fs_mask_img(test_dir, image_path, roi_list):
     # 模板匹配: 基于1, 找到apple-logo的最小外接矩形
+    timestamp_start = time.perf_counter()
     masked = PerspectiveTransform(test_dir)
+    print(time.perf_counter() - timestamp_start)
     image = np.asarray(Image.open(image_path)) 
-    print(image.shape)
     full_mask = np.zeros_like(image)
     full_mask[roi_list[0]:roi_list[1], roi_list[2]:roi_list[3]] = masked
-    print(full_mask.shape)
     cv2.imwrite('./fsps_apple_mask.jpg', full_mask)
     
 
 if __name__ == "__main__":
     
     import time
-    timestamp_start = time.perf_counter()
+    
     image_path = r'D:\work\project\beijing\Smartmore\2022\DL\kesen\codes\apple_logo_locate\fs_test.bmp'  
     test_dir = r'D:\work\project\beijing\Smartmore\2022\DL\kesen\codes\apple_logo_locate\fs_test_dir'
 
     # 1. 粗略扣除logo的roi
+    timestamp_start = time.perf_counter()
     a,b,c,d = easy_roi(image_path)
+    # print(time.perf_counter() - timestamp_start)  # 0.4s
 
     # 2. 做模板匹配, 得到logo的最小外接矩形. 再基于最小外接矩形,把apple-logo全部mask
+    # timestamp_start = time.perf_counter()
     get_fs_mask_img(test_dir, image_path, [a,b,c,d])
-    print(time.perf_counter() - timestamp_start)
+    # print(time.perf_counter() - timestamp_start)
+    
 
 
 
