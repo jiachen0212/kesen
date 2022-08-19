@@ -105,7 +105,7 @@ def heixianABC(defect_values, heixian_A, heixian_B, lengthB, distanceB, heixian_
     ABvalue_lower_lengthB = [ind for ind in ABvalue_indexs if boxes[ind][3]-boxes[ind][1] <= lengthB]
     for i in range(len(ABvalue_lower_lengthB)):
         bins = []
-        for j in range(i, ABvalue_lower_lengthB):
+        for j in range(i, len(ABvalue_lower_lengthB)):
             center1 = [(boxes[ABvalue_lower_lengthB[i]][0]+boxes[ABvalue_lower_lengthB[i]][2])/2, (boxes[ABvalue_lower_lengthB[i]][1]+boxes[ABvalue_lower_lengthB[i]][3])/2]
             center2 = [(boxes[ABvalue_lower_lengthB[j]][0]+boxes[ABvalue_lower_lengthB[j]][2])/2, (boxes[ABvalue_lower_lengthB[j]][1]+boxes[ABvalue_lower_lengthB[j]][3])/2]
             # 中心点abs(x)<=10,认为heixain在一条直线上 
@@ -203,7 +203,7 @@ def diangui(diangui_area_distance, boxes, areas, mask_sum, img_mask):
         return pop_ind_temp  
 
 
-def sdk_post(heixianban_index, diangui_index, diangui_area_distance, input_img, img_mask, defect_list, onnx_predict, predict, heixianban, scale_h, Confidence=None, num_thres=None):
+def sdk_post(heixianban_index, diangui_index, diangui_area_distance, input_img, defect_list, onnx_predict, predict, heixianban, scale_h, Confidence=None, num_thres=None, img_mask=None):
     # 计算一下img_mask的像素和:mask纯黑sum=0,则不存在AA面,就不需要出发AA的判断
     mask_sum = np.sum(img_mask)
     predict_result = dict()  
@@ -337,8 +337,9 @@ def merge(H_full, W_full, name, sub_imgs_dir, roi, split_target, h_, w_):
     full_ = np.zeros((W_full, H_full, 3))
     for i in range(split_target[0]):
         for j in range(split_target[1]):
-            path = os.path.join(sub_imgs_dir, '{}_{}_{}.bmp'.format(name, j, i))
-            img = cv2.imread(path)  # 竖直_水平
+            path = os.path.join(sub_imgs_dir, '{}_{}_{}.bmp'.format(name.split('.')[0], j, i))
+            print(path)
+            img = cv_imread_by_np(path)  # 竖直_水平
             full_img[h_*j:h_*(j+1), w_*i:w_*(i+1)] = img
     full_[roi[1]:roi[3], roi[0]:roi[2],:] = full_img
 
@@ -354,7 +355,7 @@ if __name__ == "__main__":
     diangui_defects = ['huashang', 'zangwu', 'heidian', 'fushidian', 'zhenkong', 'madian', 'aokeng', 'kailie', 'keli', 'fenchen', 'maoxian', 'xianwei', 'suoshui', 'baidian', 'lianghen']
     # A面area阈值: 0.1,0.2, AA面area阈值: 0.05, 0.08. 单个像素按照0.025mm算整除方便. 
     diangui_area_distance = [(np.sqrt(0.3)/0.025)**2, (np.sqrt(0.2)/0.025)**2, (np.sqrt(0.1)/0.025)**2, (np.sqrt(0.08)/0.025)**2, (np.sqrt(0.05)/0.025)**2, 50/0.025]
-    apple_logo_mask = True
+    apple_logo_mask = False
     
     guang_type = 'suidao'
     onnx_name = 'station3_20220626_suidao_2000iter.onnx'
@@ -372,7 +373,7 @@ if __name__ == "__main__":
     mean_ = [123.675, 116.28, 103.53]
     std_ = [58.395, 57.12, 57.375]
 
-    root_path = r'D:\mac_air_backup\chenjia\Download\Smartmore\2022\DL\kesen\codes\sdk_test'
+    root_path = r'D:\work\project\beijing\Smartmore\2022\DL\kesen\codes\sdk_test'
 
 
     if guang_type == 'suidao':
@@ -408,6 +409,7 @@ if __name__ == "__main__":
     onnx_session = ort.InferenceSession(onnx_path)
 
     for test_img in test_paths:
+        name = os.path.basename(test_img)
         full_img = cv_imread_by_np(test_img)
         W_full, H_full = full_img.shape[:2]
 
@@ -431,7 +433,6 @@ if __name__ == "__main__":
         diangui_area_distance = [a / (scale_h*scale_w) for a in diangui_area_distance]
         # 面积[0.1,0.2]间的<=3放过, 面积大于[0.2,0.3]的<=1放过. [0.05,0.1]的<=1放过.
         diangui_area_distance += [3, 1, 1]
-        
 
         # inference单张子图
         for i in range(split_target[0]):
@@ -441,17 +442,18 @@ if __name__ == "__main__":
                 img_name = os.path.join(cuted_dir, Name)
                 img_base = Image.open(img_name) 
                 img_base = np.asarray(img_base)
-                # 读取子图对应的mask图
-                img_base_mask = Image.open(img_name.split('.')[0]+'.jpg') 
-                img_base_mask = np.asarray(img_base_mask)
+                if apple_logo_mask:
+                    # 读取子图对应的mask图
+                    img_base_mask = Image.open(img_name.split('.')[0]+'.jpg') 
+                    img_base_mask = np.asarray(img_base_mask)
+                    img_mask = cv2.resize(img_base_mask, (size[0], size[1]))
                 # sub_img_inference, scale sub_img
                 img = cv2.resize(img_base, (size[0], size[1]))
-                img_mask = cv2.resize(img_base_mask, (size[0], size[1]))
                 img_ = sdk_pre(img, mean_, std_)
                 onnx_inputs = {onnx_session.get_inputs()[0].name: img_.astype(np.float32)}
                 onnx_predict = onnx_session.run(None, onnx_inputs)
                 predict = softmax(onnx_predict[0], 1)
-                map_, predict_result = sdk_post(heixianban_index, diangui_index, diangui_area_distance, img, img_mask, defects, onnx_predict, predict, heixianban, scale_h, Confidence=Confidence, num_thres=num_thres)
+                map_, predict_result = sdk_post(heixianban_index, diangui_index, diangui_area_distance, img, defects, onnx_predict, predict, heixianban, scale_h, Confidence=Confidence, num_thres=num_thres)
                 scores, boxes, areas, clsses = [],[],[],[]
                 for k, v in predict_result.items():
                     if len(v[0]):
@@ -476,5 +478,5 @@ if __name__ == "__main__":
                 cv2.imwrite(os.path.join(cuted_infer_dir, Name), sub_inference_img)
         # 合并suub_img的inference_res
         full_ = merge(H_full, W_full, name, cuted_infer_dir, roi, split_target, h_, w_)
-        cv2.imwrite(os.path.join(res_dir, im_name), full_)
+        cv2.imwrite(os.path.join(res_dir, name), full_)
     
