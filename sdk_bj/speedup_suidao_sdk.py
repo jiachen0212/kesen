@@ -17,6 +17,38 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 import math
 # from misc.contour_resize import resize_contour
 
+
+def localize_one_edge(source_image, find_in_vertical=True, thre=None, expend=200):
+    # timestamp_start = time.perf_counter()
+    if len(source_image.shape) == 2:
+        source_image = source_image[:, :, None]
+
+    h, w, c = source_image.shape
+    if find_in_vertical:  # ver
+        sample_point = (int(w * 3 / 7), int(w * 1 / 2), int(w * 4 / 7))
+        sample_lines = source_image[:, sample_point, :]
+        mean_max = np.max(np.mean(sample_lines, 1), 1)
+        if thre is None:
+            thre = np.mean(mean_max) * 0.8
+        low_bound_max = h
+    else:  # hor
+        sample_point = (int(h * 3 / 7), int(h * 1 / 2), int(h * 4 / 7))  # avoid center logo
+        sample_lines = source_image[sample_point, :, :]
+        mean_max = np.max(np.max(sample_lines, 0), 1)
+        if thre is None:
+            thre = np.mean(mean_max)
+        low_bound_max = w
+    candidate = np.where(mean_max > thre)
+    up_bound = candidate[0][0] - expend
+    low_bound = candidate[0][-1] + expend
+    up_bound = 0 if up_bound < 0 else up_bound
+    low_bound = low_bound_max if low_bound > low_bound_max else low_bound
+
+    # print(time.perf_counter() - timestamp_start)
+    return up_bound, low_bound
+
+
+
 def mkdir(res_dir):
     if not os.path.exists(res_dir):
         os.makedirs(res_dir)
@@ -293,6 +325,12 @@ def roi_cut_imgtest(img_path, roi, split_target, cuted_dir, mask=False):
     return sub_h, sub_w
 
 
+def cv_imread_by_np(filePath, clr_type=cv2.IMREAD_UNCHANGED):
+    cv_img = cv2.imdecode(np.fromfile(filePath, dtype=np.uint8), clr_type)
+
+    return cv_img
+
+
 def merge(H_full, W_full, name, sub_imgs_dir, roi, split_target, h_, w_):
 
     full_img = np.zeros((h_*split_target[1], w_*split_target[0], 3))
@@ -309,7 +347,7 @@ def merge(H_full, W_full, name, sub_imgs_dir, roi, split_target, h_, w_):
 
 if __name__ == "__main__":
     
-    # 黑线的index本应该是2的, 这里写成33,则不会触发黑线板规则.
+    # heixian缺陷的defect_index
     heixianban_index = 2
 
     # diangui规则适用的缺陷
@@ -321,12 +359,12 @@ if __name__ == "__main__":
     guang_type = 'suidao'
     onnx_name = 'station3_20220626_suidao_2000iter.onnx'
 
-    # 8K 0.027mm/pixel suidao光工位的像素分辨率, 后面会和黑线板的检出长度mm结合计算. 
+    # 8K 0.025mm/pixel suidao光工位的像素分辨率, 后面会和黑线板的检出长度mm结合计算. 
     # heixian缺陷, ABC三个灰度值等级
     heixian_A, heixian_B, heixian_C = 70, 107, 210
     # 计算长度, 距离在隧道成像下, 对应的像素点个数.
-    lengthB, lengthC = 5/0.027, 50/0.027
-    distanceB, distanceC = 10/0.027, 35/0.027
+    lengthB, lengthC = 5/0.025, 50/0.025
+    distanceB, distanceC = 10/0.025, 35/0.025
     heixian_B_num, heixian_C_num = 6, 3
     heixianban = [[heixian_A, heixian_B, heixian_C], [lengthB, lengthC], [distanceB, distanceC],[heixian_B_num, heixian_C_num]]
 
@@ -336,9 +374,8 @@ if __name__ == "__main__":
 
     root_path = r'D:\mac_air_backup\chenjia\Download\Smartmore\2022\DL\kesen\codes\sdk_test'
 
-    # roi边界冗余,纵横起始点; left用rois[1], right用rois[0] 
+
     if guang_type == 'suidao':
-        rois = [(1200, 2026, 8192, 21650), (0, 2100, 7256, 21640)] 
         defects = ['bg', 'fushidian', 'heixian', 'zangwu']
     split_target = (2, 4)
 
@@ -370,31 +407,21 @@ if __name__ == "__main__":
     onnx_path = os.path.join(root_path, guang_type, onnx_name)
     onnx_session = ort.InferenceSession(onnx_path)
 
-    for left_or_right_img in test_paths:
-        full_img = Image.open(left_or_right_img)
-        H_full, W_full = full_img.size[:2]
+    for test_img in test_paths:
+        full_img = cv_imread_by_np(test_img)
+        W_full, H_full = full_img.shape[:2]
 
-        # img_left or img_right
-        im_name = os.path.basename(left_or_right_img)
-        name = im_name.split('.')[0]
-        if im_name.split('-')[1] == '1':
-            roi = rois[1]
-            cuted_dir = os.path.join(test_dir, 'left')
-            cuted_infer_dir = os.path.join(test_dir, 'left_res')
-            mkdir(cuted_dir)
-            mkdir(cuted_infer_dir)
-        elif im_name.split('-')[1] == '2':
-            roi = rois[0]
-            roi = [1200, 1000, 8192, 20480]
-            img = np.asarray(full_img)
-            # cv2.rectangle(img, (roi[0],roi[1]), (roi[2],roi[3]), (255, 255, 255), 10, 8)
-            # cv2.imwrite(r'C:\Users\15974\Desktop\1\1.jpg', img)
-            cuted_dir = os.path.join(test_dir, 'right')
-            cuted_infer_dir = os.path.join(test_dir, 'right_res')
-            mkdir(cuted_dir)
-            mkdir(cuted_infer_dir)
+        a, b = localize_one_edge(full_img, find_in_vertical=True, thre=None, expend=200)
+        c, d = localize_one_edge(full_img, find_in_vertical=False, thre=None, expend=200)
+
+        roi = [c, a, d, b]
+        img = full_img
+        cuted_dir = os.path.join(test_dir, 'right')
+        cuted_infer_dir = os.path.join(test_dir, 'right_res')
+        mkdir(cuted_dir)
+        mkdir(cuted_infer_dir)
         # 落盘sub_imgs, j_i是sub_bin的索引.sub_img的检出box的坐标信息需换算至整图坐标,需要此索引信息.
-        h_, w_ = roi_cut_imgtest(left_or_right_img, roi, split_target, cuted_dir, mask=apple_logo_mask)
+        h_, w_ = roi_cut_imgtest(test_img, roi, split_target, cuted_dir, mask=apple_logo_mask)
         
         # 子图进入模型的缩放系数
         scale_h, scale_w = h_ / size[1], w_ / size[0] 
