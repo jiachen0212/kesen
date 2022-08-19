@@ -261,7 +261,7 @@ def sdk_post(heixianban_index, diangui_index, diangui_area_distance, input_img, 
             boxes = predict_result[defect_list[cls]][1]
             areas = predict_result[defect_list[cls]][2]
             defect_values = predict_result[defect_list[cls]][3]
-            heixian_A, heixian_B, heixian_C = heixianban[0][:3]  # 70 107 210
+            heixian_A, heixian_B, heixian_C = heixianban[0][:3]  # 77 107 210
             lengthB, lengthC = heixianban[1][0] / scale_h, heixianban[1][1] / scale_h
             distanceB, distanceC = heixianban[2][0] / scale_h, heixianban[2][1] / scale_h
             heixian_B_num, heixian_C_num = heixianban[3][:2]
@@ -349,7 +349,7 @@ def merge(H_full, W_full, name, sub_imgs_dir, roi, split_target, h_, w_):
 if __name__ == "__main__":
     
     # heixian缺陷的defect_index
-    heixianban_index = 2
+    heixianban_index = 33
 
     # diangui规则适用的缺陷
     diangui_defects = ['huashang', 'zangwu', 'heidian', 'fushidian', 'zhenkong', 'madian', 'aokeng', 'kailie', 'keli', 'fenchen', 'maoxian', 'xianwei', 'suoshui', 'baidian', 'lianghen']
@@ -362,7 +362,7 @@ if __name__ == "__main__":
 
     # 8K 0.025mm/pixel suidao光工位的像素分辨率, 后面会和黑线板的检出长度mm结合计算. 
     # heixian缺陷, ABC三个灰度值等级
-    heixian_A, heixian_B, heixian_C = 70, 107, 210
+    heixian_A, heixian_B, heixian_C = 77, 107, 210
     # 计算长度, 距离在隧道成像下, 对应的像素点个数.
     lengthB, lengthC = 5/0.025, 50/0.025
     distanceB, distanceC = 10/0.025, 35/0.025
@@ -455,12 +455,14 @@ if __name__ == "__main__":
                 predict = softmax(onnx_predict[0], 1)
                 map_, predict_result = sdk_post(heixianban_index, diangui_index, diangui_area_distance, img, defects, onnx_predict, predict, heixianban, scale_h, Confidence=Confidence, num_thres=num_thres)
                 scores, boxes, areas, clsses = [],[],[],[]
+                pixel_value = []
                 for k, v in predict_result.items():
                     if len(v[0]):
                         scores.extend(v[0])
                         boxes.extend(v[1])
                         areas.extend(v[2])
                         clsses.extend([k]*len(v[0]))
+                        pixel_value.extend(v[3])
                 mask_vis = label2colormap(map_)
                 # 绘制矩形框
                 if len(scores):
@@ -468,11 +470,13 @@ if __name__ == "__main__":
                         cv2.rectangle(mask_vis, (box[0], box[1]), (box[2], box[3]), (0, 255, 0), 1)
                         box = [box[:2], box[2:]]
                         box1 = [[int(scale_w*a[0])+w_*i+roi[0], int(scale_h*a[1])+h_*j+roi[1]] for a in box] 
-                        text = '{}: {}, '.format(clsses[ind], np.round(scores[ind], 2))
-                        text += ''.join(str(a)+',' for a in box1)
-                        text += '{}'.format(int(areas[ind]*scale_w*scale_h))
+                        # text = '{}: {}, '.format(clsses[ind], np.round(scores[ind], 2))
+                        # text += ''.join(str(a)+',' for a in box1)
+                        # text += '{}'.format(int(areas[ind]*scale_w*scale_h))
+                        # text += 'gray_value:{}'.format(pixel_value[ind])
+                        text = 'gray_value:{}'.format(pixel_value[ind])
                         cv2.putText(mask_vis, text, box[0], cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 2)
-                img_save = cv2.addWeighted(mask_vis, 0.7, img, 0.3, 10)
+                img_save = cv2.addWeighted(mask_vis, 0.4, img, 0.6, 10)
                 # re_scale sub_img
                 sub_inference_img = cv2.resize(img_save, (w_, h_))
                 cv2.imwrite(os.path.join(cuted_infer_dir, Name), sub_inference_img)
