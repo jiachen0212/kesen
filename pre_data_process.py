@@ -15,13 +15,26 @@ def cv_imread_by_np(filePath, clr_type=cv2.IMREAD_UNCHANGED):
 
 
 def slim_dirs(dir_):
-    im_dirs = [os.path.join(dir_, a) for a in os.listdir(dir_) if '.bmp' not in a]
+    im_dirs = [os.path.join(dir_, a) for a in os.listdir(dir_) if '.json' not in a]
     for im_dir in im_dirs:
         im_names = [a for a in os.listdir(im_dir) if '.bmp' in a]
         for im_name in im_names:
             shutil.copy(os.path.join(im_dir, im_name), os.path.join(dir_, im_name))  
         shutil.rmtree(im_dir)
 
+
+def slim_dirs1(dir_):
+    # 文件夹下还有ok ng的子名字的, 先剔除ok ng这一层. 
+    dirs = [os.path.join(dir_, a) for a in os.listdir(dir_)]
+    for dir_  in dirs:
+        path = os.path.join(dir_, os.listdir(dir_)[0])
+        ims = [a for a in os.listdir(path) if '.bmp' in a]
+        print(ims)
+        for im_name in ims:
+            shutil.copy(os.path.join(path, im_name), os.path.join(dir_, im_name))  
+            # print(os.path.join(path, im_name), os.path.join(dir_, im_name))
+        shutil.rmtree(path)
+    
 
 def localize_one_edge(source_image, find_in_vertical=True, thre=None, expend=200):
     
@@ -52,7 +65,7 @@ def localize_one_edge(source_image, find_in_vertical=True, thre=None, expend=200
     return up_bound, low_bound
 
 
-def generate_im_roi_json(base_dir):
+def generate_im_roi_json(base_dir, roi_json_name):
     ims = os.listdir(base_dir)
     name_roi = dict()
     for im in ims:
@@ -65,20 +78,18 @@ def generate_im_roi_json(base_dir):
         # temp = image[a:b, c:d]
         # cv2.imwrite('./1.jpg', temp)
     json_str = json.dumps(name_roi, indent=4)
-    with open('./0811_im_roi.json', 'w') as json_file:
+    with open(roi_json_name, 'w') as json_file:
         json_file.write(json_str)
 
 
 if __name__ == "__main__":
 
-    base_dir = r'D:\work\project\DL\kesen\data\原图'
-    # slim_dirs(base_dir)
+    base_dir = r'D:\work\project\DL\kesen\data\20220825 工位4 腐蚀点过漏杀样图\原图'
+    slim_dirs1(base_dir)
+    slim_dirs(base_dir)
 
     # 动态生成roi
-    generate_im_roi_json(base_dir)
+    generate_im_roi_json(base_dir, './0825_1_im_roi.json')
 
 
     
-
-    
-
