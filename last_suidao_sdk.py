@@ -491,12 +491,14 @@ if __name__ == "__main__":
             areas.extend(v[2])
             clsses.extend([k]*len(v[0]))
     colored_labeled_map = label2colormap(labeled_map)
+    cv2.imwrite('./sm_result0.jpg', colored_labeled_map)
     if len(scores):
         for ind, box in enumerate(boxes):
-            cv2.rectangle(colored_labeled_map, (box[0], box[1]), (box[2], box[3]), (0, 255, 0), 1)
+            p1, p2 = (box[0], box[1]), (box[2], box[3])
+            cv2.rectangle(colored_labeled_map, p1, p2, (0, 255, 0), 1)
             text = '{}: {}, '.format(clsses[ind], np.round(scores[ind], 2))
             text += ''.join(str(a)+',' for a in box)
             text += '{}'.format(int(areas[ind]*scale_w*scale_h))
-            cv2.putText(colored_labeled_map, text, box[0], cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 2)
+            cv2.putText(colored_labeled_map, text, p1, cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 2)
     sm_result = cv2.addWeighted(colored_labeled_map, 0.5, full_img, 0.5, 10)
-    cv2.imwrite('./sm_result.jpg', sm_result)
+    cv2.imwrite('./sm_result1.jpg', sm_result)
