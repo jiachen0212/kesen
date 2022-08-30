@@ -499,3 +499,4 @@ if __name__ == "__main__":
             text += '{}'.format(int(areas[ind]*scale_w*scale_h))
             cv2.putText(colored_labeled_map, text, box[0], cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 2)
     sm_result = cv2.addWeighted(colored_labeled_map, 0.5, full_img, 0.5, 10)
+    cv2.imwrite('./sm_result.jpg', sm_result)
