@@ -482,7 +482,7 @@ if __name__ == "__main__":
         img_mask = cv2.imread('./apple_logo_mask.jpy')
     except:
         img_mask = None
-    labeled_map, predict_result = sdk_post(heixian_index, heixianban, diangui_index, diangui_area_distance, full_index_predict, full_score_predict, defects, full_img, img_mask, hx_x_dis, hx_y_dis, Confidence=None, num_thres=None)
+    labeled_map, predict_result = sdk_post(heixian_index, heixianban, diangui_index, diangui_area_distance, full_index_predict, full_score_predict, defects, full_img, img_mask, hx_x_dis, hx_y_dis, Confidence=Confidence, num_thres=num_thres)
     scores, boxes, areas, clsses = [],[],[],[]
     for k, v in predict_result.items():
         if len(v[0]):
