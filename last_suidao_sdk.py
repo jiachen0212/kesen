@@ -8,17 +8,16 @@ import cv2
 import numpy as np
 import onnxruntime as ort
 from scipy.special import softmax
-from scipy import spatial
 import os
 from PIL import Image
 from PIL import ImageFile
 Image.MAX_IMAGE_PIXELS = None
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 import math
-# from misc.contour_resize import resize_contour
 
 
 def localize_one_edge(source_image, find_in_vertical=True, thre=None, expend=200):
+    # import time 
     # timestamp_start = time.perf_counter()
     if len(source_image.shape) == 2:
         source_image = source_image[:, :, None]
