@@ -325,7 +325,7 @@ def sdk_post(heixian_index, heixianban, diangui_index, diangui_area_distance, pr
         # merge-heixian and heixianban rlue 
         if cls == heixian_index:
             # merge 
-            merged_box_grayvalue_score_area = merge_heixian(xs, ys, hs, ws, mean_scores, defect_areas, gray_values, x_dis=x_dis, y_dis=y_dis)
+            merged_box_grayvalue_score_area = merge_heixian(xs, ys, hs, ws, mean_scores, defect_areas, gray_values, x_dis_thres=x_dis, y_dis_thres=y_dis)
             # heixianban
             boxes = merged_box_grayvalue_score_area[0]
             grayvalues = merged_box_grayvalue_score_area[1]
