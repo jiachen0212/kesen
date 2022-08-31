@@ -2,10 +2,7 @@
 '''
 suidao-sdk 
 '''
-from ntpath import realpath
 import warnings
-
-from pyrsistent import v
 warnings.filterwarnings("ignore")
 import cv2
 import numpy as np
@@ -220,58 +217,61 @@ def label2colormap(map_):
     return cmap
     
 
-def merge_heixian(xs, ys, hs, ws, mean_scores, defect_areas, gray_values, x_dis=20, y_dis=150):
-    # 先把x从小到大排序, 得到index顺序
+def merged_fun(cur_ind, xs, ys, visited, hs, x_dis_thres, y_dis_thres):
+    merged_list = []
     lens = len(xs)
-    sorted_id = sorted(range(lens), key=lambda k: xs[k], reverse=False)
-    xs_ = [xs[k] for k in sorted_id]
-    ys_ = [ys[k] for k in sorted_id]
-    hs_ = [hs[k] for k in sorted_id]
-    ws_ = [ws[k] for k in sorted_id]
-    mean_scores_ = [mean_scores[k] for k in sorted_id]
-    gray_values_ = [gray_values[k] for k in sorted_id]
-    defect_areas_ = [defect_areas[k] for k in sorted_id]
-    
-    # 从前向后遍历一次, 把需要合并的所有黑线段集合 
-    all_merged = []
-    visited = [1] * lens
-    for i in range(lens-1):
-        merged = [i]
-        for j in range(i+1, lens):
-            if (xs_[j] - xs_[i] <= x_dis) and (abs(ys_[j] - ys_[i]) <= y_dis) and visited[j]:
-                merged.append(j)
+    for j in range(cur_ind+1, lens):
+        if visited[j] and abs(xs[cur_ind]-xs[j]) <= x_dis_thres:
+            # 先计算两个hx的相对上下位置, 再取上的下边界, 和下的上边界, 计算计算距离即可
+            if ys[cur_ind] > ys[j]:
+                y1, y2 = hs[j]+ys[j], ys[cur_ind]
+            else:
+                y1, y2 = hs[cur_ind]+ys[cur_ind], ys[j]
+            if abs(y1-y2) <= y_dis_thres:
+                merged_list.append(j)
                 visited[j] = 0
-                # print(merged)
-        if visited[i]:
-            all_merged.append(merged)
-            visited[i] = 0
+
+    return merged_list
+
+
+def merge_heixian(xs, ys, hs, ws, mean_scores, defect_areas, gray_values, x_dis_thres=None, y_dis_thres=None):
+    all_merged = []
+    lens = len(xs)
+    visited = [1]*lens
     
-    # 处理最后一个hx
-    near_ind = [ind for ind in range(lens-2, -1, -1) if ((xs_[ind]-xs_[lens-1]) <= x_dis) and (abs(ys_[ind] - ys_[lens-1]) <= y_dis)]
-    if len(near_ind):
-        near_index = [a for a in range(len(all_merged)) if near_ind[0] in all_merged[a]][0]
-        all_merged[near_index].append(lens-1)
-    else:
-        all_merged.append([lens-1])
-    
+    for cur_index in range(lens):
+        if visited[cur_index]:
+            stack  = [cur_index]
+            merged_hx = [cur_index]
+            visited[cur_index] = 0
+            while stack:
+                # 弹出最后一个x, 则x相关的merged_list要加入stack
+                cur_ = stack.pop()
+                merged_list = merged_fun(cur_, xs, ys, visited, hs, x_dis_thres, y_dis_thres)
+                stack.extend(merged_list)
+                merged_hx.extend(merged_list)
+            for ind in merged_hx:
+                visited[ind] = 0
+            all_merged.append(merged_hx)
+        
     merged_lens = len(all_merged)
     merged_box_grayvalue_score_area = [[0]*merged_lens for i in range(4)]
     for r, merged_index_list in enumerate(all_merged):
         if len(merged_index_list) == 1:
-            x0, y0 = xs_[merged_index_list[0]], ys_[merged_index_list[0]]
-            x1 = x0 + ws_[merged_index_list[0]]
-            y1 = y0 + hs_[merged_index_list[0]]  
+            x0, y0 = xs[merged_index_list[0]], ys[merged_index_list[0]]
+            x1 = x0 + ws[merged_index_list[0]]
+            y1 = y0 + hs[merged_index_list[0]]  
         else:
-            x0 = xs_[merged_index_list[0]] 
-            y0 = min([ys_[p] for p in merged_index_list]) 
-            x1 = max(xs_[p]+ws_[p] for p in merged_index_list)
-            y1 = max(ys_[p]+hs_[p] for p in merged_index_list)
+            x0 = xs[merged_index_list[0]] 
+            y0 = min([ys[p] for p in merged_index_list]) 
+            x1 = max(xs[p]+ws[p] for p in merged_index_list)
+            y1 = max(ys[p]+hs[p] for p in merged_index_list)
         merged_box_grayvalue_score_area[0][r] = [x0, y0, x1, y1]
              
         # 合并的heixian gray_value, 赋值最黑value
-        merged_box_grayvalue_score_area[1][r] = min([gray_values_[p] for p in merged_index_list]) 
-        merged_box_grayvalue_score_area[2][r] = np.mean([mean_scores_[p] for p in merged_index_list])
-        merged_box_grayvalue_score_area[3][r] = sum([defect_areas_[p] for p in merged_index_list])
+        merged_box_grayvalue_score_area[1][r] = min([gray_values[p] for p in merged_index_list]) 
+        merged_box_grayvalue_score_area[2][r] = np.mean([mean_scores[p] for p in merged_index_list])
+        merged_box_grayvalue_score_area[3][r] = sum([defect_areas[p] for p in merged_index_list])
 
     return merged_box_grayvalue_score_area
 
