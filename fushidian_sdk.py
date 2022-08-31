@@ -216,158 +216,49 @@ def label2colormap(map_):
     return cmap
     
 
-def merged_fun(cur_ind, xs, ys, visited, hs, x_dis_thres, y_dis_thres):
-    merged_list = []
-    lens = len(xs)
-    for j in range(cur_ind+1, lens):
-        if visited[j] and abs(xs[cur_ind]-xs[j]) <= x_dis_thres:
-            # 先计算两个hx的相对上下位置, 再取上的下边界, 和下的上边界, 计算计算距离即可
-            if ys[cur_ind] > ys[j]:
-                y1, y2 = hs[j]+ys[j], ys[cur_ind]
-            else:
-                y1, y2 = hs[cur_ind]+ys[cur_ind], ys[j]
-            if abs(y1-y2) <= y_dis_thres:
-                merged_list.append(j)
-                visited[j] = 0
-
-    return merged_list
-
-
-def merge_heixian(xs, ys, hs, ws, mean_scores, defect_areas, gray_values, x_dis_thres=None, y_dis_thres=None):
-    all_merged = []
-    lens = len(xs)
-    visited = [1]*lens
-    
-    for cur_index in range(lens):
-        if visited[cur_index]:
-            stack  = [cur_index]
-            merged_hx = [cur_index]
-            visited[cur_index] = 0
-            while stack:
-                # 弹出最后一个x, 则x相关的merged_list要加入stack
-                cur_ = stack.pop()
-                merged_list = merged_fun(cur_, xs, ys, visited, hs, x_dis_thres, y_dis_thres)
-                stack.extend(merged_list)
-                merged_hx.extend(merged_list)
-            for ind in merged_hx:
-                visited[ind] = 0
-            all_merged.append(merged_hx)
-        
-    merged_lens = len(all_merged)
-    merged_box_grayvalue_score_area = [[0]*merged_lens for i in range(4)]
-    for r, merged_index_list in enumerate(all_merged):
-        if len(merged_index_list) == 1:
-            x0, y0 = xs[merged_index_list[0]], ys[merged_index_list[0]]
-            x1 = x0 + ws[merged_index_list[0]]
-            y1 = y0 + hs[merged_index_list[0]]  
-        else:
-            x0 = min([xs[p] for p in merged_index_list])  
-            y0 = min([ys[p] for p in merged_index_list]) 
-            x1 = max([xs[p]+ws[p] for p in merged_index_list])
-            y1 = max([ys[p]+hs[p] for p in merged_index_list])
-        merged_box_grayvalue_score_area[0][r] = [x0, y0, x1, y1]
-             
-        # 合并的heixian gray_value, 赋值最黑value
-        merged_box_grayvalue_score_area[1][r] = min([gray_values[p] for p in merged_index_list]) 
-        merged_box_grayvalue_score_area[2][r] = np.mean([mean_scores[p] for p in merged_index_list])
-        merged_box_grayvalue_score_area[3][r] = sum([defect_areas[p] for p in merged_index_list])
-
-    return merged_box_grayvalue_score_area
-
-
-def sdk_post(heixian_index, heixianban, diangui_index, diangui_area_distance, predict_index, prdect_score_map, defects_lists, infer_image, img_mask, x_dis, y_dis, Confidence=None, num_thres=None):
+def sdk_post(predict_index, prdect_score_map, defects_lists, infer_image, Confidence=None, num_thres=None):
 
     num_class = len(defects_lists)
     predict_result = dict()  
+    predict_result['fushidian'] = [[],[],[],[]]   
     temp_predict = np.zeros(predict_index.shape)
 
     for cls in range(1, num_class):
-        # {fushidian: [[score], [box], [area], [defect_value]], heixian: [[score], [box], [area], [defect_value]].. }
-        cur_defect = defects_lists[cls]
-        if cur_defect not in predict_result:
-            predict_result[cur_defect] = [[],[],[],[]]   
-        
-        defect_mask = np.array(predict_index == cls, np.uint8)
-        # 使用connectedComponentsWithStats能够直接输出面积和boundingbox
-        cc_output = cv2.connectedComponentsWithStats(defect_mask, 8)
-        num_contours  = cc_output[0]  # 连通域的个数
-        cc_stats = cc_output[2]   # 各个连通域的(x, y, width, height, area) 
-        cc_labels = cc_output[1]  # 整张图的预测label结果
+        if cls == 1:
+            defect_mask = np.array(predict_index == cls, np.uint8)
+            cc_output = cv2.connectedComponentsWithStats(defect_mask, 8)
+            num_contours  = cc_output[0]   
+            cc_stats = cc_output[2]   
+            cc_labels = cc_output[1]   
 
-        xs,ys,hs,ws,defect_areas,mean_scores,gray_values = [],[],[],[],[],[],[]
-        for label in range(1, num_contours):
-            # 用于dl检出结果渲染
-            temp_predict += defect_mask * label
-            x = cc_stats[label, cv2.CC_STAT_LEFT]
-            y = cc_stats[label, cv2.CC_STAT_TOP]
-            w = cc_stats[label, cv2.CC_STAT_WIDTH]
-            h = cc_stats[label, cv2.CC_STAT_HEIGHT]
-            area = cc_stats[label, cv2.CC_STAT_AREA]
-            temp = np.array(cc_labels == label, np.uint8)
-            score_temp = temp * prdect_score_map
-            mean_score = np.sum(score_temp) / area
+            xs,ys,hs,ws,defect_areas,mean_scores,gray_values = [],[],[],[],[],[],[]
+            for label in range(1, num_contours):
+                temp_predict += defect_mask * label
+                x = cc_stats[label, cv2.CC_STAT_LEFT]
+                y = cc_stats[label, cv2.CC_STAT_TOP]
+                w = cc_stats[label, cv2.CC_STAT_WIDTH]
+                h = cc_stats[label, cv2.CC_STAT_HEIGHT]
+                area = cc_stats[label, cv2.CC_STAT_AREA]
+                temp = np.array(cc_labels == label, np.uint8)
+                score_temp = temp * prdect_score_map
+                mean_score = np.sum(score_temp) / area
 
-            # 最小检出面积,置信度过滤
-            if (area >= num_thres[cls]) and (mean_score >= Confidence[cls]):
-                xs.append(x)
-                ys.append(y)
-                hs.append(h)
-                ws.append(w)
-                defect_areas.append(area)
-                mean_scores.append(mean_score)
-                defect_roi = infer_image[y:y+h, x:x+w] 
-                h1, w1, c = defect_roi.shape[:3]
-                hx_value = np.sum(defect_roi) / (h1*w1*c)
-                gray_values.append(hx_value)
-        # xywh -> box 
-        boxes = [[xs[i], ys[i], xs[i]+ws[i], ys[i]+hs[i]] for i in range(len(xs))]
+                # 最小检出面积,置信度过滤
+                if (area >= num_thres[cls]) and (mean_score >= Confidence[cls]):
+                    xs.append(x)
+                    ys.append(y)
+                    hs.append(h)
+                    ws.append(w)
+                    defect_areas.append(area)
+                    mean_scores.append(mean_score)
+                    defect_roi = infer_image[y:y+h, x:x+w] 
+                    h1, w1, c = defect_roi.shape[:3]
+                    hx_value = np.sum(defect_roi) / (h1*w1*c)
+                    gray_values.append(hx_value)
+            # xywh -> box 
+            centers = [[xs[i] + ws[i]//2, ys[i]+hs[i]//2] for i in range(len(xs))]
 
-        # merge-heixian and heixianban rlue 
-        if cls == heixian_index:
-            # merge 
-            merged_box_grayvalue_score_area = merge_heixian(xs, ys, hs, ws, mean_scores, defect_areas, gray_values, x_dis_thres=x_dis, y_dis_thres=y_dis)
-            # heixianban
-            boxes = merged_box_grayvalue_score_area[0]
-            grayvalues = merged_box_grayvalue_score_area[1]
-            scores = merged_box_grayvalue_score_area[2]
-            areas = merged_box_grayvalue_score_area[3]
-
-            heixian_A, heixian_B, heixian_C = heixianban[0][:3]   
-            lengthB, lengthC = heixianban[1][0] / scale_h, heixianban[1][1] / scale_h
-            distanceB, distanceC = heixianban[2][0] / scale_h, heixianban[2][1] / scale_h
-            heixian_B_num, heixian_C_num = heixianban[3][:2]
-            pop_b = heixianABC(grayvalues, heixian_A, heixian_B, lengthB, distanceB, heixian_B_num, boxes)
-            pop_c = heixianABC(grayvalues, heixian_B, heixian_C, lengthC, distanceC, heixian_C_num, boxes)
-            all_pop = list(set(pop_b+pop_c)) 
-            scores_, boxes_, areas_ = [], [], []
-            for ind in range(len(boxes)):
-                if ind not in all_pop:
-                    scores_.append(scores[ind])
-                    boxes_.append(boxes[ind])
-                    areas_.append(areas[ind])
-            predict_result[cur_defect] = [scores_, boxes_, areas_]
-            # heixian merge, heixianban end; 
-        # diangui rule 
-        elif cls in diangui_index:
-            scores = predict_result[cur_defect][0]
-            boxes = predict_result[cur_defect][1]
-            areas = predict_result[cur_defect][2]
-            if img_mask:
-                mask_sum = np.sum(img_mask)
-            else:
-                mask_sum = None
-            # diangui_area_distance: [(np.sqrt(0.2)/0.025)**2, (np.sqrt(0.1)/0.025)**2, (np.sqrt(0.08)/0.025)**2, (np.sqrt(0.05)/0.025)**2, (np.sqrt(0.02)/0.025)**2, 50/0.025, 3, 1]
-            all_pop = diangui(diangui_area_distance, boxes, areas, mask_sum=mask_sum, img_mask=img_mask)
-            scores_, boxes_, areas_ = [], [], []
-            for ind in range(len(boxes)):
-                if ind not in all_pop:
-                    scores_.append(scores[ind])
-                    boxes_.append(boxes[ind])
-                    areas_.append(areas[ind])
-            predict_result[cur_defect] = [scores_, boxes_, areas_]
-        else:
-            # 不触发heixian, diangui
-            predict_result[cur_defect] = [mean_scores, boxes, defect_areas]
+            predict_result['fuishidian'] = [mean_scores, centers, defect_areas]
     
     return temp_predict, predict_result
            
@@ -383,7 +274,7 @@ if __name__ == "__main__":
     apple_logo_mask = False
     
     guang_type = 'suidao'
-    onnx_name = 'station3_tunnel_0815_tune_gs_ls.onnx'   # 'station3_20220626_suidao_2000iter.onnx'
+    onnx_name = 'station3_20220626_suidao_2000iter.onnx'
 
     # heixian A B C 三等级灰度值 
     A, B, C = 77, 107, 210
@@ -393,7 +284,7 @@ if __name__ == "__main__":
     # [[77, 107, 210], [5, 50], [10, 35],[6, 3]]
     heixianban = [[A, B, C], [lengthB, lengthC], [distanceB, distanceC],[B_num, C_num]]
     # hexiang合并参数, xdis小于20像素, ydis小于150像素
-    hx_x_dis, hx_y_dis = 20, 50
+    hx_x_dis, hx_y_dis = 20, 150
 
     # model mean && std
     mean_ = [123.675, 116.28, 103.53]
@@ -470,34 +361,18 @@ if __name__ == "__main__":
             predict = softmax(onnx_predict[0], 1)
             score_map = np.max(predict[0, :, :, :], axis=0)
             predict_index_map = predict_index_map[0, :, :]   
-            # cv2.INTER_NEAREST, 最近邻插值
             org_predict_index_map = cv2.resize(predict_index_map, (w_, h_), interpolation=cv2.INTER_NEAREST)
             org_predict_score_map = cv2.resize(score_map, (w_, h_), interpolation=cv2.INTER_NEAREST)
             full_index_predict[a+j*h_:a+(j+1)*h_, c+i*w_:c+(i+1)*w_] = org_predict_index_map
             full_score_predict[a+j*h_:a+(j+1)*h_, c+i*w_:c+(i+1)*w_] = org_predict_score_map
     full_index_predict = full_index_predict.astype(np.uint8)
-    # full_index_predict && full_score_predict, 做点规,黑线板 等后处理
-    try:
-        img_mask = cv2.imread('./apple_logo_mask.jpy')
-    except:
-        img_mask = None
-    labeled_map, predict_result = sdk_post(heixian_index, heixianban, diangui_index, diangui_area_distance, full_index_predict, full_score_predict, defects, full_img, img_mask, hx_x_dis, hx_y_dis, Confidence=Confidence, num_thres=num_thres)
-    scores, boxes, areas, clsses = [],[],[],[]
+    labeled_map, predict_result = sdk_post(full_index_predict, full_score_predict, defects, full_img, Confidence=Confidence, num_thres=num_thres)
+    scores, centers, areas = [],[],[] 
     for k, v in predict_result.items():
         if len(v[0]):
             scores.extend(v[0])
-            boxes.extend(v[1])
+            centers.extend(v[1])
             areas.extend(v[2])
-            clsses.extend([k]*len(v[0]))
     colored_labeled_map = label2colormap(labeled_map)
-    cv2.imwrite('./sm_result0.jpg', colored_labeled_map)
-    if len(scores):
-        for ind, box in enumerate(boxes):
-            p1, p2 = (box[0], box[1]), (box[2], box[3])
-            cv2.rectangle(colored_labeled_map, p1, p2, (0, 255, 0), 1)
-            text = '{}: {}, '.format(clsses[ind], np.round(scores[ind], 2))
-            text += ''.join(str(a)+',' for a in box)
-            text += '{}'.format(int(areas[ind]*scale_w*scale_h))
-            cv2.putText(colored_labeled_map, text, p1, cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 2)
-    sm_result = cv2.addWeighted(colored_labeled_map, 0.5, full_img, 0.5, 10)
-    cv2.imwrite('./sm_result1.jpg', sm_result)
+    cv2.imwrite('./fsd.jpg', colored_labeled_map)
+    print(centers)
