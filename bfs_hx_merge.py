@@ -52,10 +52,10 @@ def merged_box(xs, ys,  hs, gray_values, x_dis_thres=None, y_dis_thres=None):
             x1 = x0 + ws[merged_index_list[0]]
             y1 = y0 + hs[merged_index_list[0]]  
         else:
-            x0 = xs[merged_index_list[0]] 
+            x0 = min([xs[p] for p in merged_index_list])  
             y0 = min([ys[p] for p in merged_index_list]) 
-            x1 = max(xs[p]+ws[p] for p in merged_index_list)
-            y1 = max(ys[p]+hs[p] for p in merged_index_list)
+            x1 = max([xs[p]+ws[p] for p in merged_index_list])
+            y1 = max([ys[p]+hs[p] for p in merged_index_list])
         merged_box_grayvalue_score_area[0][r] = [x0, y0, x1, y1]
                 
         # 合并的heixian gray_value, 赋值最黑value
