@@ -43,8 +43,8 @@ def localize_one_edge(source_image, find_in_vertical=True, thre=None, expend=200
 
 if __name__ == "__main__":
 
-    flag = 0 # 左半图
-    # flag = 0  # 右半图
+    flag = 2
+    # flag = 2 对腐蚀得到的定位apple-logo做放大, 实现apple-logo外扩10mm
 
     if flag == 0:
         # 隧道的右半张子图  [apple-logo少的那半张]
@@ -61,13 +61,17 @@ if __name__ == "__main__":
         a += 8000
         b -= 8000
         wuliao_tz = sd2_image[a:b, c:d]
-        cv2.imwrite('./wuliao_sd.jpg', wuliao_tz)
+        cv2.imwrite('./wuliao_sd.jpg', wuliao_tz) 
         otsuThe, maxValue = 0, 255  # otsuThe=46
         _, dst_Otsu = cv2.threshold(wuliao_tz, otsuThe, maxValue, cv2.THRESH_OTSU)
         dst_Otsu = cv2.bitwise_not(dst_Otsu)
         # 检测出的apple-logo边上还是有点黑点, so先腐蚀(去除黑点)再膨胀(外扩白像素.)
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(30,30))
         dst_Otsu1 = cv2.erode(dst_Otsu, kernel, iterations=1)
+        full_mask_ = np.zeros_like(sd2_image)
+        full_mask_[a:b, c:d] = dst_Otsu1
+        cv2.imwrite('./eroded_apple_mask.jpg', full_mask_)
+
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(50,50))
         dst_Otsu2 = cv2.dilate(dst_Otsu1, kernel, 2)  
         # 0901, 多加几次膨胀, 让apple-logo外阔多一些
@@ -112,3 +116,7 @@ if __name__ == "__main__":
         full_mask[a:b, c:d] = dst_Otsu2
         # print(full_mask.shape)
         cv2.imwrite('./sd1_apple_mask.jpg', full_mask)
+    
+    elif flag == 2:
+        base_img = cv2.imread('./eroded_apple_mask.jpg')
+        print(base_img.shape)

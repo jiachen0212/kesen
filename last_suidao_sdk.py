@@ -221,7 +221,7 @@ def aa_heixian(x_y_h_w_score_area_grayvalue, img_mask):
     remian = [[] for i in range(7)]
     # 只需判定左上角点or左下角点, 是否有一个在aa内, ta就是aa-heixian了. img_mask: aa部分全白, 其余全黑 
     lens = len(x_y_h_w_score_area_grayvalue[0])
-    remain_a_inds = [a for a in range(lens) if (img_mask[x_y_h_w_score_area_grayvalue[0][a]][x_y_h_w_score_area_grayvalue[1][a]] != 255) or (img_mask[x_y_h_w_score_area_grayvalue[0][a]][x_y_h_w_score_area_grayvalue[1][a]+x_y_h_w_score_area_grayvalue[2][a]] != 255)]
+    remain_a_inds = [a for a in range(lens) if ((img_mask[x_y_h_w_score_area_grayvalue[1][a]][x_y_h_w_score_area_grayvalue[0][a]][0] != 255) and (img_mask[x_y_h_w_score_area_grayvalue[1][a]][x_y_h_w_score_area_grayvalue[0][a]+x_y_h_w_score_area_grayvalue[3][a]][0] != 255))]
     remian = [[hx_[b] for b in remain_a_inds] for hx_ in x_y_h_w_score_area_grayvalue]
 
     return remian[:7]
@@ -336,7 +336,6 @@ def sdk_post(heixian_index, heixianban, diangui_index, diangui_area_distance, pr
         # merge-heixian and heixianban rlue 
         if cls == heixian_index:
             # 1. aa面黑线直接判ng, ABCD等级距离约束
-            
             xs, ys, hs, ws, mean_scores, defect_areas, gray_values = aa_heixian([xs, ys, hs, ws, mean_scores, defect_areas, gray_values], img_mask)
 
             # 2. merge 
