@@ -83,3 +83,10 @@ for ind, bbox in enumerate(boxs):
     cv2.putText(colored_predict, text, (x0, y0), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 2)
 cv2.imwrite('./merged_hx.jpg', colored_predict)
 
+
+
+
+logo_mask = cv2.imread('./test_apple_mask.jpg')
+org_image = cv2.imread(r'D:\work\project\beijing\Smartmore\2022\DL\kesen\codes\sdk_test\suidao\test_dir\A180_KSA0000000879003_Snow_Station4_Linear_Tunnel_2_2022_08_29_16_01_19_196_RC_N_Ori.bmp')
+show_merged_mask = cv2.addWeighted(logo_mask, 0.1, org_image, 0.9, 10)    
+cv2.imwrite('./show_merged_mask.jpg', show_merged_mask)   

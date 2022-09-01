@@ -216,6 +216,18 @@ def label2colormap(map_):
     return cmap
     
 
+
+def aa_heixian(x_y_h_w_score_area_grayvalue, img_mask):
+    remian = [[] for i in range(7)]
+    # 只需判定左上角点or左下角点, 是否有一个在aa内, ta就是aa-heixian了. img_mask: aa部分全白, 其余全黑 
+    lens = len(x_y_h_w_score_area_grayvalue[0])
+    remain_a_inds = [a for a in range(lens) if (img_mask[x_y_h_w_score_area_grayvalue[0][a]][x_y_h_w_score_area_grayvalue[1][a]] != 255) or (img_mask[x_y_h_w_score_area_grayvalue[0][a]][x_y_h_w_score_area_grayvalue[1][a]+x_y_h_w_score_area_grayvalue[2][a]] != 255)]
+    remian = [[hx_[b] for b in remain_a_inds] for hx_ in x_y_h_w_score_area_grayvalue]
+
+    return remian[:7]
+
+
+
 def merged_fun(cur_ind, xs, ys, visited, hs, x_dis_thres, y_dis_thres):
     merged_list = []
     lens = len(xs)
@@ -288,11 +300,10 @@ def sdk_post(heixian_index, heixianban, diangui_index, diangui_area_distance, pr
             predict_result[cur_defect] = [[],[],[],[]]   
         
         defect_mask = np.array(predict_index == cls, np.uint8)
-        # 使用connectedComponentsWithStats能够直接输出面积和boundingbox
         cc_output = cv2.connectedComponentsWithStats(defect_mask, 8)
-        num_contours  = cc_output[0]  # 连通域的个数
-        cc_stats = cc_output[2]   # 各个连通域的(x, y, width, height, area) 
-        cc_labels = cc_output[1]  # 整张图的预测label结果
+        num_contours  = cc_output[0]   
+        cc_stats = cc_output[2]   
+        cc_labels = cc_output[1]   
 
         xs,ys,hs,ws,defect_areas,mean_scores,gray_values = [],[],[],[],[],[],[]
         for label in range(1, num_contours):
@@ -324,9 +335,13 @@ def sdk_post(heixian_index, heixianban, diangui_index, diangui_area_distance, pr
 
         # merge-heixian and heixianban rlue 
         if cls == heixian_index:
-            # merge 
+            # 1. aa面黑线直接判ng, ABCD等级距离约束
+            
+            xs, ys, hs, ws, mean_scores, defect_areas, gray_values = aa_heixian([xs, ys, hs, ws, mean_scores, defect_areas, gray_values], img_mask)
+
+            # 2. merge 
             merged_box_grayvalue_score_area = merge_heixian(xs, ys, hs, ws, mean_scores, defect_areas, gray_values, x_dis_thres=x_dis, y_dis_thres=y_dis)
-            # heixianban
+            # 3. heixianban
             boxes = merged_box_grayvalue_score_area[0]
             grayvalues = merged_box_grayvalue_score_area[1]
             scores = merged_box_grayvalue_score_area[2]
@@ -348,23 +363,23 @@ def sdk_post(heixian_index, heixianban, diangui_index, diangui_area_distance, pr
             predict_result[cur_defect] = [scores_, boxes_, areas_]
             # heixian merge, heixianban end; 
         # diangui rule 
-        elif cls in diangui_index:
-            scores = predict_result[cur_defect][0]
-            boxes = predict_result[cur_defect][1]
-            areas = predict_result[cur_defect][2]
-            if img_mask:
-                mask_sum = np.sum(img_mask)
-            else:
-                mask_sum = None
-            # diangui_area_distance: [(np.sqrt(0.2)/0.025)**2, (np.sqrt(0.1)/0.025)**2, (np.sqrt(0.08)/0.025)**2, (np.sqrt(0.05)/0.025)**2, (np.sqrt(0.02)/0.025)**2, 50/0.025, 3, 1]
-            all_pop = diangui(diangui_area_distance, boxes, areas, mask_sum=mask_sum, img_mask=img_mask)
-            scores_, boxes_, areas_ = [], [], []
-            for ind in range(len(boxes)):
-                if ind not in all_pop:
-                    scores_.append(scores[ind])
-                    boxes_.append(boxes[ind])
-                    areas_.append(areas[ind])
-            predict_result[cur_defect] = [scores_, boxes_, areas_]
+        # elif cls in diangui_index:
+        #     scores = predict_result[cur_defect][0]
+        #     boxes = predict_result[cur_defect][1]
+        #     areas = predict_result[cur_defect][2]
+        #     if img_mask.any():
+        #         mask_sum = np.sum(img_mask)
+        #     else:
+        #         mask_sum = None
+        #     # diangui_area_distance: [(np.sqrt(0.2)/0.025)**2, (np.sqrt(0.1)/0.025)**2, (np.sqrt(0.08)/0.025)**2, (np.sqrt(0.05)/0.025)**2, (np.sqrt(0.02)/0.025)**2, 50/0.025, 3, 1]
+        #     all_pop = diangui(diangui_area_distance, boxes, areas, mask_sum=mask_sum, img_mask=img_mask)
+        #     scores_, boxes_, areas_ = [], [], []
+        #     for ind in range(len(boxes)):
+        #         if ind not in all_pop:
+        #             scores_.append(scores[ind])
+        #             boxes_.append(boxes[ind])
+        #             areas_.append(areas[ind])
+        #     predict_result[cur_defect] = [scores_, boxes_, areas_]
         else:
             # 不触发heixian, diangui
             predict_result[cur_defect] = [mean_scores, boxes, defect_areas]
@@ -421,7 +436,7 @@ if __name__ == "__main__":
         num_thres[iid] = math.ceil((np.sqrt(0.02)/0.025)**2)
      
     test_dir = os.path.join(root_path, guang_type, 'test_dir')
-    test_img = os.path.join(test_dir, 'test.bmp')
+    test_img = os.path.join(test_dir, 'A180_KSA0000000879003_Snow_Station4_Linear_Tunnel_2_2022_08_29_16_01_19_196_RC_N_Ori.bmp')    # 'test.bmp')
     res_dir = os.path.join(root_path, guang_type, 'res_dir')
     mkdir(res_dir)
 
@@ -451,7 +466,7 @@ if __name__ == "__main__":
     # 点规distance: box的左上角点distance.
     diangui_area_distance = [a / (scale_h*scale_w) for a in diangui_area_distance]
     # [0.02,0.08] dis>50mm都放过, [0.08,0.1] dis<=50, <=3放过, [0.1,0.2] dis<=50, <=1放过
-    diangui_area_distance += [3, 1]
+    diangui_area_distance += [3, 1, 1]
     
     # infernece 
     full_index_predict = np.zeros((W_full, H_full))
@@ -477,8 +492,9 @@ if __name__ == "__main__":
             full_score_predict[a+j*h_:a+(j+1)*h_, c+i*w_:c+(i+1)*w_] = org_predict_score_map
     full_index_predict = full_index_predict.astype(np.uint8)
     # full_index_predict && full_score_predict, 做点规,黑线板 等后处理
+    test_mask_path = './test_apple_mask.jpg'
     try:
-        img_mask = cv2.imread('./apple_logo_mask.jpy')
+        img_mask = cv2.imread(test_mask_path)
     except:
         img_mask = None
     labeled_map, predict_result = sdk_post(heixian_index, heixianban, diangui_index, diangui_area_distance, full_index_predict, full_score_predict, defects, full_img, img_mask, hx_x_dis, hx_y_dis, Confidence=Confidence, num_thres=num_thres)
