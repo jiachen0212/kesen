@@ -118,5 +118,23 @@ if __name__ == "__main__":
         cv2.imwrite('./sd1_apple_mask.jpg', full_mask)
     
     elif flag == 2:
-        base_img = cv2.imread('./eroded_apple_mask.jpg')
-        print(base_img.shape)
+        import math
+        half_logo_length = 1043
+        base_img = cv2.imread('./eroded_apple_mask.jpg')  # h,w: 22000 8192
+        h, w = base_img.shape[:2]
+        first = 0
+        while not base_img[first][0][0]: 
+            first += 1
+        apple_center = half_logo_length+first
+        erode_mask = cv2.resize(base_img, (int(w*1.5), int(h*1.5)), interpolation=cv2.INTER_NEAREST)
+        # cv2.imwrite('./erode_mask_mask.jpg', erode_mask)
+        first = 0
+        while not erode_mask[first][0][0]: 
+            first += 1
+        apple_center1 = first + math.ceil(half_logo_length*1.5) 
+        diff_ = apple_center1 - apple_center
+        modif_erode_mask = erode_mask[diff_:diff_+h, :w]
+        show_merged_mask = cv2.addWeighted(modif_erode_mask, 0.5, base_img, 0.5, 10)     
+        cv2.imwrite('./q.jpg', show_merged_mask)
+        
+        
