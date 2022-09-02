@@ -43,7 +43,7 @@ def localize_one_edge(source_image, find_in_vertical=True, thre=None, expend=200
 
 if __name__ == "__main__":
 
-    flag = 2
+    flag = 3
     # flag = 2 对腐蚀得到的定位apple-logo做放大, 实现apple-logo外扩10mm
 
     if flag == 0:
@@ -65,25 +65,34 @@ if __name__ == "__main__":
         otsuThe, maxValue = 0, 255  # otsuThe=46
         _, dst_Otsu = cv2.threshold(wuliao_tz, otsuThe, maxValue, cv2.THRESH_OTSU)
         dst_Otsu = cv2.bitwise_not(dst_Otsu)
+
+        timestamp_start = time.perf_counter()
         # 检测出的apple-logo边上还是有点黑点, so先腐蚀(去除黑点)再膨胀(外扩白像素.)
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(30,30))
         dst_Otsu1 = cv2.erode(dst_Otsu, kernel, iterations=1)
-        full_mask_ = np.zeros_like(sd2_image)
-        full_mask_[a:b, c:d] = dst_Otsu1
-        cv2.imwrite('./eroded_apple_mask.jpg', full_mask_)
+        # full_mask_ = np.zeros_like(sd2_image)
+        # full_mask_[a:b, c:d] = dst_Otsu1
+        # cv2.imwrite('./eroded_apple_mask.jpg', full_mask_)
 
+        # # 0901, 多加几次膨胀, 让apple-logo外阔多一些
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(50,50))
-        dst_Otsu2 = cv2.dilate(dst_Otsu1, kernel, 2)  
-        # 0901, 多加几次膨胀, 让apple-logo外阔多一些
+        dst_Otsu2 = cv2.dilate(dst_Otsu1, kernel, 2) 
         for i in range(10):
             dst_Otsu2 = cv2.dilate(dst_Otsu2, kernel, 2)  
             # print(np.sum(dst_Otsu2))
+        print("10次膨胀", time.perf_counter() - timestamp_start)  # 2.4s
+
+        # 大核外扩 
+        # kernel_large = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(130,130))
+        # dst_Otsu2 = cv2.dilate(dst_Otsu1, kernel_large, 2)  
+        
+        # print("大核膨胀", time.perf_counter() - timestamp_start)  # 1.8s 
 
         # 把abcd添加回去, 得到和原图一样size的apple-mask
         full_mask = np.zeros_like(sd2_image)
         full_mask[a:b, c:d] = dst_Otsu2
         print(full_mask.shape)
-        cv2.imwrite(r'D:\work\project\beijing\Smartmore\2022\DL\kesen\codes\test_apple_mask.jpg', full_mask)
+        cv2.imwrite('./2.jpg', full_mask)
 
     elif flag == 1:
         # 隧道的左半张子图   [apple-logo多的那半张]
@@ -136,5 +145,13 @@ if __name__ == "__main__":
         modif_erode_mask = erode_mask[diff_:diff_+h, :w]
         show_merged_mask = cv2.addWeighted(modif_erode_mask, 0.5, base_img, 0.5, 10)     
         cv2.imwrite('./q.jpg', show_merged_mask)
+    
+    elif flag == 3:
+        img1 = cv2.imread('./test_apple_mask.jpg')
+        img2 = cv2.imread(r'D:\work\project\beijing\Smartmore\2022\DL\kesen\codes\sdk_test\suidao\test_dir\A180_KSA0000000879003_Snow_Station4_Linear_Tunnel_2_2022_08_29_16_01_19_196_RC_N_Ori.bmp')
+        # stemp = cv2.bitwise_not(img2)
+        # cv2.imwrite('./stemp.jpg', stemp)
+        show_merged_mask = cv2.addWeighted(img1, 0.2, img2, 0.8, 10)     
+        cv2.imwrite('./3.jpg', show_merged_mask)
         
         

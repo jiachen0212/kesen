@@ -218,17 +218,25 @@ def label2colormap(map_):
 
 
 def aa_heixian(x_y_h_w_score_area_grayvalue, img_mask):
+    xs, ys = x_y_h_w_score_area_grayvalue[0], x_y_h_w_score_area_grayvalue[1]
+    hs, ws = x_y_h_w_score_area_grayvalue[2], x_y_h_w_score_area_grayvalue[3]
+    scores, areas = x_y_h_w_score_area_grayvalue[4], x_y_h_w_score_area_grayvalue[5]
     remian = [[] for i in range(7)]
     # 只需判定左上角点or左下角点, 是否有一个在aa内, ta就是aa-heixian了. img_mask: aa部分全白, 其余全黑 
-    lens = len(x_y_h_w_score_area_grayvalue[0])
-    aa_inds = [a for a in range(lens) if ((img_mask[x_y_h_w_score_area_grayvalue[1][a]][x_y_h_w_score_area_grayvalue[0][a]][0] == 255) or (img_mask[x_y_h_w_score_area_grayvalue[1][a]][x_y_h_w_score_area_grayvalue[0][a]+x_y_h_w_score_area_grayvalue[3][a]][0] == 255))]
-    aa_boxes = [[x_y_h_w_score_area_grayvalue[0][ind], x_y_h_w_score_area_grayvalue[1][ind], x_y_h_w_score_area_grayvalue[0][ind]+x_y_h_w_score_area_grayvalue[3][ind], x_y_h_w_score_area_grayvalue[1][ind]+x_y_h_w_score_area_grayvalue[2][ind]] for ind in aa_inds]
-    
-    remain_a_inds = [a for a in range(lens) if ((img_mask[x_y_h_w_score_area_grayvalue[1][a]][x_y_h_w_score_area_grayvalue[0][a]][0] != 255) and (img_mask[x_y_h_w_score_area_grayvalue[1][a]][x_y_h_w_score_area_grayvalue[0][a]+x_y_h_w_score_area_grayvalue[3][a]][0] != 255))]
+    lens = len(xs)
+    aa_inds = [a for a in range(lens) if ((img_mask[ys[a]][xs[a]][0] == 255) or (img_mask[ys[a]+hs[a]][xs[a]][0] == 255))]
+    aa_boxes = [[xs[ind], ys[ind], xs[ind]+ws[ind], ys[ind]+hs[ind]] for ind in aa_inds]
+    aa_scores = [scores[ind] for ind in aa_inds]
+    aa_areas = [areas[ind] for ind in aa_inds]
+    remain_a_inds = [a for a in range(lens) if a not in aa_inds]
     remian = [[hx_[b] for b in remain_a_inds] for hx_ in x_y_h_w_score_area_grayvalue]
     
-    return remian[:7], aa_boxes
+    # aa黑线的: score, box, area 信息加入
+    remian.append(aa_scores)
+    remian.append(aa_boxes)
+    remian.append(aa_areas)
 
+    return remian[:10] 
 
 
 def merged_fun(cur_ind, xs, ys, visited, hs, x_dis_thres, y_dis_thres):
@@ -339,8 +347,8 @@ def sdk_post(heixian_index, heixianban, diangui_index, diangui_area_distance, pr
         # merge-heixian and heixianban rlue 
         if cls == heixian_index:
             # 1. aa面黑线直接判ng, ABCD等级距离约束
-            xs, ys, hs, ws, mean_scores, defect_areas, gray_values, aa_boxes = aa_heixian([xs, ys, hs, ws, mean_scores, defect_areas, gray_values], img_mask)
-
+            xs, ys, hs, ws, mean_scores, defect_areas, gray_values, aa_scores, aa_boxes, aa_areas = aa_heixian([xs, ys, hs, ws, mean_scores, defect_areas, gray_values], img_mask)
+  
             # 2. merge 
             merged_box_grayvalue_score_area = merge_heixian(xs, ys, hs, ws, mean_scores, defect_areas, gray_values, x_dis_thres=x_dis, y_dis_thres=y_dis)
             # 3. heixianban
@@ -363,7 +371,9 @@ def sdk_post(heixian_index, heixianban, diangui_index, diangui_area_distance, pr
                     boxes_.append(boxes[ind])
                     areas_.append(areas[ind])
             # aa面的box直接添加进来, 后处理渲染+puttext
-            boxes_ += aa_boxes
+            boxes_.extend(aa_boxes)
+            areas_.extend(aa_areas)
+            scores_.extend(aa_scores)
             predict_result[cur_defect] = [scores_, boxes_, areas_]
             # heixian merge, heixianban end; 
         # diangui rule 
