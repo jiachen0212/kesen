@@ -300,7 +300,7 @@ def merge_heixian(xs, ys, hs, ws, mean_scores, defect_areas, gray_values, x_dis_
 
 
 
-def sdk_post(dbscan_R, heixian_index, heixianban, diangui_index, diangui_area_distance, predict_index, prdect_score_map, defects_lists, infer_image, img_mask, x_dis, y_dis, Confidence=None, num_thres=None):
+def sdk_post(dbscan_R, min_samples, heixian_index, heixianban, diangui_index, diangui_area_distance, predict_index, prdect_score_map, defects_lists, infer_image, img_mask, x_dis, y_dis, Confidence=None, num_thres=None):
 
     num_class = len(defects_lists)
     predict_result = dict()  
@@ -379,7 +379,9 @@ def sdk_post(dbscan_R, heixian_index, heixianban, diangui_index, diangui_area_di
         # diangui rule 
         elif cls in diangui_index:
             # cluster_center_xy聚类中心坐标
-            cluster_center_xy, xs, ys, ws, hs, scores, areas = dbscan_fushidian(xs, ys, ws, hs, scores, areas, min_samples=min_samples, R=dbscan_R)
+            print('before dbscan: ', len(xs))
+            cluster_center_xy, xs, ys, ws, hs, scores, areas = dbscan_fushidian(xs, ys, ws, hs, mean_scores, defect_areas, min_samples=min_samples, R=dbscan_R)
+            print('after dbscan: ', len(xs))
             # xywh -> box 
             boxes = [[xs[i], ys[i], xs[i]+ws[i], ys[i]+hs[i]] for i in range(len(xs))]
             scores = predict_result[cur_defect][0]
@@ -414,6 +416,8 @@ if __name__ == "__main__":
     # diangui适用的defects
     # dbscan_R: 距离中心点50个像素内的点被认为需要检为fushidian
     dbscan_R = 50 
+    # min_samples: 聚类的最少点个数
+    min_samples = 4
     diangui_defects = ['huashang', 'zangwu', 'heidian', 'fushidian', 'zhenkong', 'madian', 
     'aokeng', 'kailie', 'keli', 'fenchen', 'maoxian', 'xianwei', 'suoshui', 'baidian', 'lianghen']
     diangui_area_distance = [(np.sqrt(0.2)/0.025)**2, (np.sqrt(0.1)/0.025)**2, (np.sqrt(0.08)/0.025)**2, (np.sqrt(0.05)/0.025)**2, (np.sqrt(0.02)/0.025)**2, 50/0.025]
@@ -519,7 +523,7 @@ if __name__ == "__main__":
         img_mask = cv2.imread(test_mask_path)
     except:
         img_mask = None
-    labeled_map, predict_result = sdk_post(dbscan_R, heixian_index, heixianban, diangui_index, diangui_area_distance, full_index_predict, full_score_predict, defects, full_img, img_mask, hx_x_dis, hx_y_dis, Confidence=Confidence, num_thres=num_thres)
+    labeled_map, predict_result = sdk_post(dbscan_R, min_samples, heixian_index, heixianban, diangui_index, diangui_area_distance, full_index_predict, full_score_predict, defects, full_img, img_mask, hx_x_dis, hx_y_dis, Confidence=Confidence, num_thres=num_thres)
     scores, boxes, areas, clsses = [],[],[],[]
     for k, v in predict_result.items():
         if len(v[0]):
