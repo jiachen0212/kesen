@@ -5,17 +5,16 @@ from sklearn.cluster import DBSCAN
 
 
 
-def dbscan_fushidian(X, min_samples=4, trian_eps=False):
+def dbscan_fushidian(xs, ys, ws, hs, scores, areas, min_samples=4, R=50, trian_eps=False):
 
     '''
-    X: dl模型判断检出的 fushidian的box-center-list
     min_samples 前端可调参数, 聚类最小样本数
     trian_eps 是否开启最佳eps搜索, 词过程较耗时
 
     '''
     
-    # 归一化X
-
+    # X: dl模型判断检出的 fushidian的box-center-list
+    X = [[xs[ind]+ws[ind]//2, ys[ind]+hs[ind]//2] for ind in range(len(xs))]
     X= [[p[0]/8000, p[1]/20000] for p in X]
     lens = len(X)
 
@@ -35,25 +34,43 @@ def dbscan_fushidian(X, min_samples=4, trian_eps=False):
     y_pre = dbscan.labels_
     # -1是噪声类, 认为不是fushidian, 直接舍弃
     cluster_labels = [a for a in list(set(y_pre)) if a != -1]
-    clusters = [[] for a in range(len(cluster_labels))]
+    remain_inds = [r_ind for r_ind in range(lens) if y_pre[r_ind] != -1]
+
+    cluster_center_xy = [[] for a in range(len(cluster_labels))]
+    xs_, ys_ = [], []
+    scores_, areas_ = [], []
+    ws_, hs_ = [], []
 
     for cluster_index, cluster in enumerate(cluster_labels):
         cluster_x = [X[a][0] for a in range(lens) if y_pre[a] == cluster]
         cluster_y = [X[a][1] for a in range(lens) if y_pre[a] == cluster]
-        clusters[cluster_index] = [int(np.mean(cluster_x)*8000), int(np.mean(cluster_y)*20000)]
+        cluster_center_xy[cluster_index] = [int(np.mean(cluster_x)*8000), int(np.mean(cluster_y)*20000)]
+        if not R:
+            # 不做聚类中心距离约束, 保留全部聚类到的点
+            xs_, ys_ = [xs[k] for k in remain_inds], [ys[k] for k in remain_inds]
+            ws_, hs_ = [ws[k] for k in remain_inds], [hs[k] for k in remain_inds]
+            scores_, areas_ = [scores[k] for k in remain_inds], [areas[k] for k in remain_inds]
+        else:
+            center_x_min, center_x_max = int(np.mean(cluster_x)*8000)-R, int(np.mean(cluster_x)*8000)+R
+            center_y_min, center_y_max = int(np.mean(cluster_y)*20000)-R, int(np.mean(cluster_y)*20000)+R 
+            
+            xs_ = [xs[ind] for ind in remain_inds if ((center_x_min<=xs[ind]<=center_x_max) and (center_y_min<=ys[ind]<=center_y_max))]
+            ys_ = [ys[ind] for ind in remain_inds if ((center_x_min<=xs[ind]<=center_x_max) and (center_y_min<=ys[ind]<=center_y_max))]
+            scores_ = [scores[ind] for ind in remain_inds if ((center_x_min<=xs[ind]<=center_x_max) and (center_y_min<=ys[ind]<=center_y_max))]
+            areas_ = [areas[ind] for ind in remain_inds if ((center_x_min<=xs[ind]<=center_x_max) and (center_y_min<=ys[ind]<=center_y_max))]
+            ws_ = [ws[ind] for ind in remain_inds if ((center_x_min<=xs[ind]<=center_x_max) and (center_y_min<=ys[ind]<=center_y_max))]
+            hs_ = [hs[ind] for ind in remain_inds if ((center_x_min<=xs[ind]<=center_x_max) and (center_y_min<=ys[ind]<=center_y_max))]
 
-    return clusters
 
+    return cluster_center_xy, xs_, ys_, ws_, hs_, scores_, areas_
 
 
 
 
 if __name__ == "__main__":
 
-    X = [[2954, 1988], [3305, 1989], [5992, 2129], [5902, 2142], [6011, 2149], [2587, 2162], [2439, 2167], [6107, 2239], [6701, 2251], [6836, 2567], [5408, 2641], [396, 3425], [5755, 3452], [2745, 3635], [5891, 3674], [6825, 3843], [6774, 4065], [692, 4263], [191, 4450], [3484, 4467], [360, 4859], [5922, 5062], [5488, 5273], [32, 5514], [2263, 5885], [836, 6097], [3991, 6280], [4703, 6303], [4507, 6384], [3976, 6642], [1065, 7410], [470, 7498], [2679, 7943], [2824, 8005], [2717, 8050], [6947, 8176], [3448, 8718], [4333, 8745], [4813, 9144], [629, 9203], [1543, 9421], [1366, 9819], [5731, 10054], [4572, 10206], [4374, 10409], [4555, 10958], [627, 10997], [4374, 11022], [4371, 11061], [4369, 11107], [2975, 11118], [2952, 11132], [4155, 11368], [2378, 11386], [2983, 11640], [6838, 12103], [224, 12878], [1946, 13507], [4153, 13872], [979, 14098], [1614, 14135], [924, 14353], [1633, 15076], [2203, 15303], [842, 15317], [2168, 15839], [3451, 15873], [923, 15973], [4376, 16066], [2039, 16114], [2525, 16173], [3029, 16205], [1444, 16209], [4851, 16231], [5890, 16312], [3339, 16370], [2963, 16400], [3851, 16423], [1222, 16513], [2920, 16537], [4300, 16625], [4495, 16634], [4960, 16664], [5456, 16715], [4920, 16735], [2409, 16800], [3183, 16807], [4247, 16880], [4476, 16901], [4222, 16934], [2456, 16966], [2091, 16975], [4215, 17004], [5328, 17015], [3058, 17071], [4360, 17080], [497, 17083], [4360, 17167], [2459, 17169], [4312, 17172], [2433, 17192], [2976, 17209], [4368, 17301], [4944, 17347], [5335, 17378], [5315, 17399], [2105, 17425], [4539, 17429], [3799, 17460], [1890, 17481], [3976, 17537], [2753, 17538], [2560, 17558], [5307, 17570], [4617, 17585], [4370, 17604], [5310, 17609], [5343, 17609], [4363, 17624], [1239, 17660], [5326, 17702], [4834, 17773], [4296, 17799], [863, 17808], [3346, 17823], [887, 17829], [3144, 17833], [2738, 17841], [4754, 17861], [2903, 17868], [4453, 17875], [4506, 17877], [4665, 17913], [4716, 17922], [4752, 17922], [4691, 17922], [5337, 17922], [5322, 17931], [4800, 17938], [4859, 17943], [4973, 17964], [5332, 17980], [5162, 18000], [5272, 18019], [5308, 18024], [5352, 18033], [5396, 18040], [3818, 18041], [5424, 18047], [5454, 18051], [5450, 18070], [5742, 18121], [5770, 18130], [3146, 18147], [4502, 18149], [4562, 18147], [5792, 18193], [1605, 18253], [348, 18314], [767, 18319], [5091, 18450], [4950, 18521], [1537, 18530], [5447, 18560], [5260, 18578], [5352, 18592], [5289, 18598], [5666, 18618], [4905, 18627], [2642, 18628], [5070, 18644], [5338, 18648], [5271, 18678], [4915, 18684], [2437, 18716], [4943, 18730], [5257, 18727], [3747, 18754], [5232, 18767], [4880, 18795], [4380, 18884], [4522, 18923], [4626, 18949], [4862, 18981], [4905, 18987], [4937, 18999], [5008, 19012], [5141, 19035], [5165, 19037], [5224, 19041], [5303, 19063], [5377, 19072], [5456, 19086], [792, 19196], [6818, 19226], [6876, 19250], [395, 19379], [1053, 19414], [956, 19445], [3857, 19538], [2713, 19650], [3133, 19701], [256, 19758], [2051, 19759], [3750, 19896], [1512, 19930], [1574, 20028], [1028, 20049], [1040, 20062], [6817, 20148], [2913, 20204], [4226, 20205], [2665, 20242], [6363, 20249], [73, 20290], [974, 20466], [3299, 20653], [6245, 20650], [485, 20671], [3355, 20694], [3352, 20709], [4002, 20747]]
     min_samples = 4
-    clusters_xy = dbscan_fushidian(X, min_samples=min_samples)
-    for clusters_ in clusters_xy:
-        print(clusters_)
+    R = 50
+    dbscan_fushidian(xs, ys, ws, hs, scores, areas, min_samples=min_samples, R=R)
 
 
