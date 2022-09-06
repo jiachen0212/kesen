@@ -14,7 +14,7 @@ def dbscan_fushidian(xs, ys, ws, hs, scores, areas, min_samples=4, R=50, trian_e
     
     
     # X: dl模型判断检出的 fushidian的box-center-list
-    X = [[xs[ind]+ws[ind]//2, ys[ind]+hs[ind]//2] for ind in range(len(xs))]
+    X = [[xs[ind]+ws[ind]//2, ys[ind]+hs[ind]//2] for ind in range(lens)]
     lens = len(X)
     X= [[p[0]/8000, p[1]/20000] for p in X]
     
